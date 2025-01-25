@@ -1,0 +1,46 @@
+{
+  "name": "course-english-app",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@expo-google-fonts/poppins": "^0.2.3",
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-navigation/bottom-tabs": "^7.1.2",
+    "@react-navigation/drawer": "^7.0.17",
+    "@react-navigation/native": "^7.0.9",
+    "@react-navigation/native-stack": "^7.1.10",
+    "@supabase/supabase-js": "^2.48.0",
+    "axios": "^1.7.8",
+    "d3-shape": "^3.2.0",
+    "expo": "~52.0.11",
+    "expo-av": "~15.0.1",
+    "expo-linear-gradient": "~14.0.1",
+    "expo-secure-store": "^14.0.0",
+    "expo-status-bar": "~2.0.0",
+    "react": "18.3.1",
+    "react-native": "0.76.3",
+    "react-native-gesture-handler": "^2.21.2",
+    "react-native-reanimated": "^3.16.7",
+    "react-native-redash": "^18.1.3",
+    "react-native-safe-area-context": "^5.1.0",
+    "react-native-svg": "^15.9.0",
+    "react-native-webview": "13.12.5",
+    "styled-components": "^6.1.13"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@types/d3-shape": "^3.1.6",
+    "@types/react": "~18.3.12",
+    "nativewind": "^4.1.23",
+    "tailwindcss": "^3.3.2",
+    "typescript": "^5.3.3"
+  },
+  "private": true,
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+}
