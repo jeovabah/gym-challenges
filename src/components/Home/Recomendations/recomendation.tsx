@@ -29,7 +29,7 @@ export const Recomendation = ({
           <Image
             source={{ uri: image }}
             className="w-[157px] h-[95px] rounded-xl"
-            resizeMode="stretch"
+            resizeMode="cover"
             onError={() => setHasError(true)}
           />
         ) : (

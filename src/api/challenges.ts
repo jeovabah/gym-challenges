@@ -1,7 +1,7 @@
 import { supabase } from "@/utils/supabase";
 import { PostgrestSingleResponse } from "@supabase/supabase-js";
 
-type Challenge = {
+export type Challenge = {
   id: string;
   title: string;
   type: "public" | "private";
@@ -21,8 +21,21 @@ export const getChallenges = async (): Promise<Challenge[]> => {
   const { data, error }: ChallengeResponse = await supabase
     .from("challenges")
     .select(
-      "id, title, type, start_date, end_date, reward_points, max_participants, (SELECT COUNT(*) FROM challenge_participants WHERE challenge_id = challenges.id) AS participant_count"
-    );
+      `
+      id,
+      title,
+      type,
+      start_date,
+      end_date,
+      reward_points,
+      max_participants,
+      rules,
+      invite_code,
+      status,
+      participant_count:challenge_participants(count)
+    `
+    )
+    .returns<Challenge[]>();
 
   if (error) {
     throw new Error(`Erro ao listar desafios: ${error.message}`);
@@ -83,7 +96,10 @@ export const joinChallenge = async (
   return { message: "Você entrou no desafio com sucesso!" };
 };
 
-type CreateChallengeInput = Omit<Challenge, "id" | "participant_count"> & {
+export type CreateChallengeInput = Omit<
+  Challenge,
+  "id" | "participant_count"
+> & {
   creator_id: string;
 };
 
