@@ -5,25 +5,31 @@ import {
   View,
   ActivityIndicator,
   FlatList,
-  Button,
+  RefreshControl,
   TouchableOpacity,
+  Dimensions,
 } from "react-native";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   createChallenge,
   CreateChallengeInput,
   getChallenges,
+  Challenge as ChallengeType,
 } from "@/api/challenges";
-import { Challenge as ChallengeProps } from "@/api/challenges";
 import { ChallengeCard } from "@/components/Challenge/Card";
+import { useSession } from "@/providers/SessionProvider";
+
+const TAB_BAR_HEIGHT = 64;
 
 export const Challenge = () => {
-  const [challenges, setChallenges] = useState<ChallengeProps[]>([]);
+  const [challenges, setChallenges] = useState<ChallengeType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { user } = useSession();
 
   const list = async () => {
     try {
-      const response = await getChallenges();
+      const response = await getChallenges(user?.auth?.id);
       setChallenges(response);
     } catch (error) {
       console.error(error);
@@ -32,22 +38,43 @@ export const Challenge = () => {
     }
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await list();
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   useEffect(() => {
     list();
   }, []);
 
   const createChallengeMock = async () => {
     const challenge = {
-      title: "Desafio 1",
-      type: "public",
-      start_date: new Date().toISOString(),
-      end_date: new Date().toISOString(),
+      creator_id: user?.auth?.id || "",
+      title: "Desafio de Supino",
+      rules: "Complete 100kg em 10 repetições",
+      start_date: "2025-01-01T00:00:00Z",
+      end_date: "2025-01-10T23:59:59Z",
       reward_points: 100,
-      creator_id: "d6420acc-0673-413e-ad99-d76b88a51bdb",
+      type: "public",
+      max_participants: 10,
+      workout_type: "volume" as const,
+      muscle_group: "Peito",
+      image_url: "https://picsum.photos/200/300",
     } as CreateChallengeInput;
 
-    const response = await createChallenge(challenge);
-    console.log(response);
+    try {
+      const response = await createChallenge(challenge);
+      setChallenges((prev) => [
+        ...prev,
+        { ...response, isParticipating: true },
+      ]);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   if (loading) {
@@ -79,8 +106,19 @@ export const Challenge = () => {
       <View className="px-4 flex-1">
         <FlatList
           data={challenges}
-          renderItem={({ item }) => <ChallengeCard {...item} />}
+          renderItem={({ item }) => (
+            <ChallengeCard
+              key={item.id}
+              updateFront={setChallenges}
+              {...item}
+            />
+          )}
           keyExtractor={(item) => item.id}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 16 }}
           ListEmptyComponent={() => (
             <Text className="text-white text-center font-poppins-regular">
               Nenhum desafio encontrado
