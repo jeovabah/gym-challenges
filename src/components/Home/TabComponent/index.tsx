@@ -2,9 +2,10 @@ import { useState } from "react";
 import { View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Tab } from "./tab";
+import { useActiveTab, setActiveTab } from "./event";
 
 export const TabComponent = () => {
-  const [activeTab, setActiveTab] = useState("challenges");
+  const activeTab = useActiveTab();
 
   const tabs = [
     {

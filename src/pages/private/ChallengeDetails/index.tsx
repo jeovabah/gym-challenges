@@ -235,8 +235,6 @@ export const ChallengeDetails = ({ route }: any) => {
     }
   };
 
-  console.log(challengeId);
-
   const handleJoinPrivateChallenge = async () => {
     try {
       await joinChallenge(user?.auth?.id || "", challengeId, state.accessCode);
