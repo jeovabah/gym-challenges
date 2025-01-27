@@ -140,7 +140,13 @@ export const ChallengeCard = ({ updateFront, ...item }: ChallengeCardProps) => {
         >
           <View className="flex-1 pr-4">
             <View className="mb-2">
-              {isActive() ? (
+              {item.status === "completed" ? (
+                <View className="bg-red-500 self-start px-2 py-1 rounded-full mb-1">
+                  <Text className="text-xs text-white font-poppins-regular">
+                    Finalizado
+                  </Text>
+                </View>
+              ) : isActive() ? (
                 <View className="bg-green-500 self-start px-2 py-1 rounded-full mb-1">
                   <Text className="text-xs text-white font-poppins-regular">
                     {item.isParticipating ? "Participando" : "Ativo"}
@@ -164,6 +170,14 @@ export const ChallengeCard = ({ updateFront, ...item }: ChallengeCardProps) => {
                     color="#FFD700"
                     style={{ marginLeft: 8 }}
                   />
+                )}
+                {item.type === "private" && (
+                  <View className="flex-row items-center ml-2">
+                    <MaterialIcons name="lock" size={16} color="#666" />
+                    <Text className="text-gray-600 ml-1 font-poppins-regular">
+                      Privado
+                    </Text>
+                  </View>
                 )}
               </View>
             </View>

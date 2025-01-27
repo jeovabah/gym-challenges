@@ -60,6 +60,71 @@ export const getChallenges = async (id?: string): Promise<Challenge[]> => {
   }));
 };
 
+export const showChallenge = async (
+  challenge_id: string,
+  user_id?: string
+): Promise<Challenge> => {
+  type ChallengeResponse = {
+    id: string;
+    title: string;
+    type: "public" | "private";
+    start_date: string;
+    end_date: string;
+    reward_points: number;
+    max_participants: number | null;
+    rules: string;
+    invite_code?: string;
+    status?: string;
+    creator_id?: string;
+    workout_type?: "regular" | "volume";
+    muscle_group?: string;
+    image_url?: string;
+    participant_count: { count: number }[];
+    challenge_participants: { user_id: string }[];
+  };
+
+  const { data, error } = await supabase
+    .from("challenges")
+    .select(
+      `
+      id,
+      title,
+      type,
+      start_date,
+      end_date,
+      reward_points,
+      max_participants,
+      rules,
+      invite_code,
+      status,
+      creator_id,
+      workout_type,
+      muscle_group,
+      image_url,
+      participant_count:challenge_participants(count),
+      challenge_participants!left(user_id)
+    `
+    )
+    .eq("id", challenge_id)
+    .single<ChallengeResponse>();
+
+  if (error) {
+    throw new Error(`Erro ao buscar desafio: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Desafio não encontrado");
+  }
+
+  return {
+    ...data,
+    participant_count: data.participant_count[0]?.count || 0,
+    isParticipating: data.challenge_participants?.some(
+      (p) => p.user_id === user_id
+    ),
+  };
+};
+
 export const joinChallenge = async (
   user_id: string,
   challenge_id: string,
@@ -189,19 +254,39 @@ export const registerWorkout = async ({
     throw new Error("Você já registrou um treino para hoje.");
   }
 
-  const { error: insertError } = await supabase.from("workout_logs").insert([
+  const { data: workoutLog, error: insertError } = await supabase
+    .from("workout_logs")
+    .insert([
+      {
+        user_id,
+        challenge_id,
+        date: today,
+        muscle_group,
+        volume,
+        image_url,
+      },
+    ])
+    .select()
+    .single();
+
+  if (insertError) {
+    throw new Error(`Erro ao registrar treino: ${insertError.message}`);
+  }
+
+  const message = `Registrou um treino de ${muscle_group} com volume total de ${volume}`;
+  const { error: chatError } = await supabase.from("challenge_chats").insert([
     {
       user_id,
       challenge_id,
-      date: today,
-      muscle_group,
-      volume,
+      message,
       image_url,
     },
   ]);
 
-  if (insertError) {
-    throw new Error(`Erro ao registrar treino: ${insertError.message}`);
+  if (chatError) {
+    throw new Error(
+      `Erro ao registrar mensagem do treino: ${chatError.message}`
+    );
   }
 
   return { message: "Treino registrado com sucesso!" };
@@ -232,7 +317,18 @@ export const sendMessageChallenge = async ({
 export const getChatMessages = async (challenge_id: string): Promise<any[]> => {
   const { data, error } = await supabase
     .from("challenge_chats")
-    .select("id, user_id, message, image_url, created_at")
+    .select(
+      `
+      id,
+      user_id,
+      message,
+      image_url,
+      created_at,
+      user:user_id (
+        name
+      )
+    `
+    )
     .eq("challenge_id", challenge_id)
     .order("created_at", { ascending: true });
 

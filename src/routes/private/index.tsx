@@ -6,6 +6,7 @@ import { Notifications } from "@/pages/private/Notifications";
 import { Chat } from "@/pages/private/Chat";
 import { Forum } from "@/pages/private/Forum";
 import { DrawerCustom } from "@/components/DrawerCustom";
+import { ChallengeDetails } from "@/pages/private/ChallengeDetails";
 
 const DrawerRoutes = () => {
   const Drawer = createDrawerNavigator();
@@ -61,6 +62,7 @@ export const PrivateRoutes = () => {
       }}
     >
       <Stack.Screen name="DrawerRoutes" component={DrawerRoutes} />
+      <Stack.Screen name="ChallengeDetails" component={ChallengeDetails} />
       <Stack.Screen name="Notifications" component={Notifications} />
     </Stack.Navigator>
   );
