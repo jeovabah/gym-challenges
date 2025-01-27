@@ -203,9 +203,16 @@ export type CreateChallengeInput = Omit<
 export const createChallenge = async (
   challenge: CreateChallengeInput
 ): Promise<Challenge> => {
+  const imageStorageUrl = await uploadChallengeImage(challenge.image_url || "");
+
   const { data: challengeData, error: challengeError } = await supabase
     .from("challenges")
-    .insert([challenge])
+    .insert([
+      {
+        ...challenge,
+        image_url: imageStorageUrl,
+      },
+    ])
     .select()
     .single<Challenge>();
 
@@ -261,6 +268,8 @@ export const registerWorkout = async ({
     throw new Error("Você já registrou um treino para hoje.");
   }
 
+  const uploadedImageUrl = await uploadChallengeImage(image_url);
+
   const { data: workoutLog, error: insertError } = await supabase
     .from("workout_logs")
     .insert([
@@ -270,7 +279,7 @@ export const registerWorkout = async ({
         date: today,
         muscle_group,
         volume,
-        image_url,
+        image_url: uploadedImageUrl,
       },
     ])
     .select()
@@ -286,7 +295,7 @@ export const registerWorkout = async ({
       user_id,
       challenge_id,
       message,
-      image_url,
+      image_url: uploadedImageUrl,
     },
   ]);
 
@@ -310,9 +319,18 @@ export const sendMessageChallenge = async ({
   message: string;
   image_url?: string;
 }): Promise<{ message: string }> => {
-  const { error } = await supabase
-    .from("challenge_chats")
-    .insert([{ user_id, challenge_id, message, image_url }]);
+  const uploadedImageUrl = image_url
+    ? await uploadChallengeImage(image_url)
+    : undefined;
+
+  const { error } = await supabase.from("challenge_chats").insert([
+    {
+      user_id,
+      challenge_id,
+      message,
+      image_url: uploadedImageUrl,
+    },
+  ]);
 
   if (error) {
     throw new Error(`Erro ao enviar mensagem: ${error.message}`);
@@ -344,4 +362,37 @@ export const getChatMessages = async (challenge_id: string): Promise<any[]> => {
   }
 
   return data || [];
+};
+
+const uploadChallengeImage = async (
+  imageUri: string
+): Promise<string | undefined> => {
+  if (!imageUri) {
+    return imageUri;
+  }
+
+  try {
+    const timestamp = new Date().getTime();
+    const filename = `challenge-${timestamp}.jpg`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("challenges")
+      .upload(filename, imageUri, {
+        contentType: "image/jpeg",
+      });
+
+    if (uploadError) {
+      console.error("[uploadChallengeImage] Upload error:", uploadError);
+      throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("challenges").getPublicUrl(filename);
+
+    return publicUrl;
+  } catch (error) {
+    console.error("[uploadChallengeImage] Error:", error);
+    return undefined;
+  }
 };

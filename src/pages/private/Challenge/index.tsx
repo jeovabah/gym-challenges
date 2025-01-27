@@ -7,7 +7,11 @@ import {
   FlatList,
   RefreshControl,
   TouchableOpacity,
-  Dimensions,
+  Modal,
+  TextInput,
+  ScrollView,
+  Image,
+  Alert,
 } from "react-native";
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -18,6 +22,8 @@ import {
 } from "@/api/challenges";
 import { ChallengeCard } from "@/components/Challenge/Card";
 import { useSession } from "@/providers/SessionProvider";
+import { Mask } from "@/utils/mask";
+import * as ImagePicker from "expo-image-picker";
 
 const TAB_BAR_HEIGHT = 64;
 
@@ -25,7 +31,24 @@ export const Challenge = () => {
   const [challenges, setChallenges] = useState<ChallengeType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const { user } = useSession();
+
+  const today = new Date();
+  const formattedToday = today.toLocaleDateString("pt-BR");
+
+  const [title, setTitle] = useState("");
+  const [rules, setRules] = useState("");
+  const [startDate, setStartDate] = useState(formattedToday);
+  const [endDate, setEndDate] = useState(formattedToday);
+  const [type, setType] = useState<"public" | "private">("public");
+  const [maxParticipants, setMaxParticipants] = useState("");
+  const [workoutType, setWorkoutType] = useState<"regular" | "volume">(
+    "volume"
+  );
+  const [muscleGroup, setMuscleGroup] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
 
   const list = async () => {
     try {
@@ -51,19 +74,68 @@ export const Challenge = () => {
     list();
   }, []);
 
-  const createChallengeMock = async () => {
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setImageUrl(result.assets[0].uri);
+    }
+  };
+
+  const validateFields = () => {
+    if (!title) {
+      Alert.alert("Erro", "Por favor, insira um título para o desafio");
+      return false;
+    }
+    if (!startDate) {
+      Alert.alert("Erro", "Por favor, insira uma data de início");
+      return false;
+    }
+    if (!endDate) {
+      Alert.alert("Erro", "Por favor, insira uma data de término");
+      return false;
+    }
+    if (!maxParticipants) {
+      Alert.alert("Erro", "Por favor, insira o número máximo de participantes");
+      return false;
+    }
+    if (!muscleGroup) {
+      Alert.alert("Erro", "Por favor, insira o grupo muscular");
+      return false;
+    }
+    if (type === "private" && !inviteCode) {
+      Alert.alert(
+        "Erro",
+        "Por favor, insira um código de convite para o desafio privado"
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const handleCreateChallenge = async () => {
+    if (!validateFields()) return;
+
     const challenge = {
       creator_id: user?.auth?.id || "",
-      title: "Desafio de Supino",
-      rules: "Complete 100kg em 10 repetições",
-      start_date: "2025-01-01T00:00:00Z",
-      end_date: "2025-01-10T23:59:59Z",
-      reward_points: 100,
-      type: "public",
-      max_participants: 10,
-      workout_type: "volume" as const,
-      muscle_group: "Peito",
-      image_url: "https://picsum.photos/200/300",
+      title,
+      rules:
+        rules ||
+        "1. Registre seus treinos diariamente\n2. Mantenha a consistência\n3. Compartilhe seu progresso no chat",
+      start_date: Mask.transformMaskBirthdayInUs(startDate),
+      end_date: Mask.transformMaskBirthdayInUs(endDate),
+      reward_points: 15,
+      type,
+      max_participants: parseInt(maxParticipants),
+      workout_type: workoutType,
+      muscle_group: muscleGroup,
+      image_url: imageUrl,
+      invite_code: type === "private" ? inviteCode : undefined,
     } as CreateChallengeInput;
 
     try {
@@ -72,9 +144,24 @@ export const Challenge = () => {
         ...prev,
         { ...response, isParticipating: true },
       ]);
+      setShowCreateModal(false);
+      resetForm();
     } catch (error) {
       console.error(error);
     }
+  };
+
+  const resetForm = () => {
+    setTitle("");
+    setRules("");
+    setStartDate(formattedToday);
+    setEndDate(formattedToday);
+    setType("public");
+    setMaxParticipants("");
+    setWorkoutType("regular");
+    setMuscleGroup("");
+    setImageUrl("");
+    setInviteCode("");
   };
 
   if (loading) {
@@ -98,7 +185,7 @@ export const Challenge = () => {
       <View className="px-4 mb-4">
         <TouchableOpacity
           className="bg-secondary rounded-lg p-3 items-center"
-          onPress={createChallengeMock}
+          onPress={() => setShowCreateModal(true)}
         >
           <Text className="text-white font-poppins-regular">Criar desafio</Text>
         </TouchableOpacity>
@@ -126,6 +213,166 @@ export const Challenge = () => {
           )}
         />
       </View>
+
+      <Modal
+        visible={showCreateModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCreateModal(false)}
+      >
+        <View className="flex-1 bg-black/50">
+          <View className="bg-background h-full mt-20 rounded-t-3xl p-4">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-white font-poppins-medium text-lg">
+                Criar Desafio
+              </Text>
+              <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+                <Text className="text-white text-lg">✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT }}
+            >
+              <Text className="text-white mb-2 font-poppins-medium">
+                Título do desafio
+              </Text>
+              <TextInput
+                placeholder="Ex: Desafio de Peito - 30 dias"
+                placeholderTextColor="#9ca3af"
+                value={title}
+                onChangeText={setTitle}
+                className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
+              />
+
+              <Text className="text-white mb-2 font-poppins-medium">
+                Data de início
+              </Text>
+              <TextInput
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor="#9ca3af"
+                value={startDate}
+                onChangeText={(text) => setStartDate(Mask.maskBirthday(text))}
+                className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
+              />
+
+              <Text className="text-white mb-2 font-poppins-medium">
+                Data de término
+              </Text>
+              <TextInput
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor="#9ca3af"
+                value={endDate}
+                onChangeText={(text) => setEndDate(Mask.maskBirthday(text))}
+                className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
+              />
+
+              <View className="flex-row mb-3">
+                <TouchableOpacity
+                  className={`flex-1 p-4 rounded-lg mr-2 ${
+                    type === "public" ? "bg-purple-600" : "bg-zinc-700"
+                  }`}
+                  onPress={() => setType("public")}
+                >
+                  <Text className="text-white text-center">Público</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className={`flex-1 p-4 rounded-lg ${
+                    type === "private" ? "bg-purple-600" : "bg-zinc-700"
+                  }`}
+                  onPress={() => setType("private")}
+                >
+                  <Text className="text-white text-center">Privado</Text>
+                </TouchableOpacity>
+              </View>
+
+              {type === "private" && (
+                <>
+                  <Text className="text-white mb-2 font-poppins-medium">
+                    Código de convite
+                  </Text>
+                  <TextInput
+                    placeholder="Digite um código para seu desafio privado"
+                    placeholderTextColor="#9ca3af"
+                    value={inviteCode}
+                    onChangeText={setInviteCode}
+                    className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
+                  />
+                </>
+              )}
+
+              <Text className="text-white mb-2 font-poppins-medium">
+                Máximo de participantes
+              </Text>
+              <TextInput
+                placeholder="Ex: 20"
+                placeholderTextColor="#9ca3af"
+                value={maxParticipants}
+                onChangeText={setMaxParticipants}
+                keyboardType="numeric"
+                className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
+              />
+
+              {/* <View className="flex-row mb-3">
+                <TouchableOpacity
+                  className={`flex-1 p-4 rounded-lg mr-2 ${
+                    workoutType === "regular" ? "bg-purple-600" : "bg-zinc-700"
+                  }`}
+                  onPress={() => setWorkoutType("regular")}
+                >
+                  <Text className="text-white text-center">Regular</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className={`flex-1 p-4 rounded-lg ${
+                    workoutType === "volume" ? "bg-purple-600" : "bg-zinc-700"
+                  }`}
+                  onPress={() => setWorkoutType("volume")}
+                >
+                  <Text className="text-white text-center">Volume</Text>
+                </TouchableOpacity>
+              </View> */}
+
+              <Text className="text-white mb-2 font-poppins-medium">
+                Grupo muscular
+              </Text>
+              <TextInput
+                placeholder="Ex: Peito, Costas, Pernas, Braços..."
+                placeholderTextColor="#9ca3af"
+                value={muscleGroup}
+                onChangeText={setMuscleGroup}
+                className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
+              />
+
+              <TouchableOpacity
+                className="bg-zinc-700 rounded-lg p-4 items-center mb-6"
+                onPress={pickImage}
+              >
+                <Text className="text-white font-poppins-medium">
+                  {imageUrl ? "Alterar imagem" : "Escolher imagem da galeria"}
+                </Text>
+              </TouchableOpacity>
+
+              {imageUrl && (
+                <Image
+                  source={{ uri: imageUrl }}
+                  className="w-full h-40 rounded-lg mb-6"
+                  resizeMode="cover"
+                />
+              )}
+
+              <TouchableOpacity
+                className="bg-purple-600 rounded-lg p-4 items-center mb-4"
+                onPress={handleCreateChallenge}
+              >
+                <Text className="text-white font-poppins-medium">
+                  Criar Desafio
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
