@@ -19,6 +19,8 @@ export type Challenge = {
   workout_type?: "regular" | "volume";
   muscle_group?: string;
   image_url?: string;
+  winner_id?: string;
+  winner?: { name: string };
 };
 
 type ChallengeResponse = PostgrestSingleResponse<Challenge[]>;
@@ -42,6 +44,8 @@ export const getChallenges = async (id?: string): Promise<Challenge[]> => {
       workout_type,
       muscle_group,
       image_url,
+      winner_id,
+      winner:winner_id(name),
       participant_count:challenge_participants(count),
       challenge_participants!left(user_id)
     `
@@ -81,6 +85,7 @@ export const showChallenge = async (
     image_url?: string;
     participant_count: { count: number }[];
     challenge_participants: { user_id: string }[];
+    winner?: { name: string };
   };
 
   const { data, error } = await supabase
@@ -101,6 +106,8 @@ export const showChallenge = async (
       workout_type,
       muscle_group,
       image_url,
+      winner_id,
+      winner:winner_id(name),
       participant_count:challenge_participants(count),
       challenge_participants!left(user_id)
     `

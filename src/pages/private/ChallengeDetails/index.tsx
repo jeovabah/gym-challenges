@@ -23,7 +23,7 @@ import {
 } from "@/api/challenges";
 import { useSession } from "@/providers/SessionProvider";
 import { HeaderPage } from "@/components/HeaderPage";
-import { format } from "date-fns";
+import { format, isAfter, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Camera, CameraView } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
@@ -355,6 +355,13 @@ export const ChallengeDetails = ({ route }: any) => {
     }
   }, [state.reps, state.sets, state.weight]);
 
+  const isChallengeEnded = () => {
+    if (!state.challenge?.end_date) return false;
+
+    const endDate = addDays(new Date(state.challenge.end_date), 1);
+    return isAfter(new Date(), endDate);
+  };
+
   if (state.loading) {
     return (
       <SafeAreaView className="flex-1 bg-background py-2">
@@ -453,6 +460,17 @@ export const ChallengeDetails = ({ route }: any) => {
                   Este é um desafio privado
                 </Text>
               )}
+              {(state.challenge?.status === "completed" ||
+                isChallengeEnded()) && (
+                <View className="bg-purple-600 p-4 rounded-lg mt-4">
+                  <Text className="text-white font-poppins-medium text-center">
+                    Desafio Finalizado!
+                  </Text>
+                  <Text className="text-white text-center mt-2">
+                    Vencedor: {state?.challenge?.winner?.name || "Não definido"}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -467,6 +485,12 @@ export const ChallengeDetails = ({ route }: any) => {
                 Participar do desafio
               </Text>
             </TouchableOpacity>
+          ) : state.challenge?.status === "completed" || isChallengeEnded() ? (
+            <View className="bg-zinc-800 p-4 rounded-lg">
+              <Text className="text-white text-center">
+                Este desafio já foi finalizado
+              </Text>
+            </View>
           ) : (
             <>
               <View className="bg-zinc-800 p-4 rounded-lg mb-4">
