@@ -9,7 +9,7 @@ export const Recomendation = ({
 }: {
   title: string;
   image: string;
-  onPress: () => void;
+  onPress?: () => void;
 }) => {
   const [hasError, setHasError] = useState(false);
 
@@ -35,14 +35,19 @@ export const Recomendation = ({
         ) : (
           renderPlaceholder()
         )}
-        <TouchableOpacity
-          className="absolute bottom-2 right-2 bg-secondary p-2 rounded-full"
-          onPress={onPress}
-        >
-          <Ionicons name="play" size={20} color="white" />
-        </TouchableOpacity>
+        {onPress && (
+          <TouchableOpacity
+            className="absolute bottom-2 right-2 bg-secondary p-2 rounded-full"
+            onPress={onPress}
+          >
+            <Ionicons name="play" size={20} color="white" />
+          </TouchableOpacity>
+        )}
       </View>
-      <Text className="text-primary font-poppins-regular text-lg mt-2">
+      <Text
+        className="text-primary font-poppins-regular text-lg mt-2"
+        numberOfLines={1}
+      >
         {title}
       </Text>
     </View>

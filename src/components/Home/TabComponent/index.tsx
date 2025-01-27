@@ -14,8 +14,8 @@ export const TabComponent = () => {
       iconName: "barbell",
     },
     {
-      key: "progress",
-      title: "Progresso",
+      key: "gyms",
+      title: "Academias",
       iconName: "stats-chart",
     },
     {
