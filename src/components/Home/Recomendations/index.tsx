@@ -51,7 +51,6 @@ export const Recomendations = () => {
   const fetchGyms = async () => {
     try {
       const data = await getGyms();
-      console.log(JSON.stringify(data, null, 2));
       setGyms(data || []);
     } catch (err) {
       console.log(err);

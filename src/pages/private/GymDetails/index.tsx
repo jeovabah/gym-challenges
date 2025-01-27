@@ -92,7 +92,6 @@ function reducer(state: State, action: Action): State {
 
 export const GymDetails = ({ route }: any) => {
   const { gym: item } = route.params;
-  console.log(item);
   const [state, dispatch] = useReducer(reducer, initialState);
   const gym: Gym = item;
 
