@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "course-english-app",
-    "slug": "course-english-app",
+    "name": "gymGreen",
+    "slug": "gymGreen",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,10 +19,16 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.gymGreen"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6d7500d8-8d66-43a6-8e7d-47d0986f4732"
+      }
     }
   }
 }
