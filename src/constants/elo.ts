@@ -6,7 +6,7 @@ import diamond from "../../assets/elos/diamante-no-bg.png";
 export const ELOS = {
   BRONZE: "60245da3-0a4c-42ea-ba13-f962494c648e",
   PRATA: "931e3c1e-f976-433d-ae16-03729a278695",
-  OURO: "aeca5334-7a9a-412e-b66d-8631aeab8faaa",
+  OURO: "aeca5334-7a9a-412e-b66d-8631aeab8faa",
   DIAMANTE: "72ec0cb9-d5c7-4395-9a30-da0e6624d152",
 };
 

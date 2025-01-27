@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useStorageState } from "@/hooks/useStorageState";
 import { showToast } from "@/utils/toast";
 import { RegisterProps } from "@/stores/RegisterStore";
-import { login, reloadSession, signUp } from "@/api/auth";
-import { getUser } from "@/api/user";
+import { login, signUp } from "@/api/auth";
+import { getUserGamer } from "@/api/user";
 
 type UserMetadata = {
   confirmation_sent_at: string;
@@ -98,14 +98,15 @@ export function SessionProvider(props: React.PropsWithChildren) {
   const loadStorageData = async () => {
     try {
       setLoading(true);
-      const session = await reloadSession();
-      if (session?.session?.access_token) {
-        setSession(session.session.access_token);
-      }
-      const user = await getUser();
-      if (user) {
-        setUser(JSON.stringify(user));
-      }
+      const userData = JSON.parse(user || "");
+      const game = await getUserGamer(userData.auth.id || "");
+
+      setUser(
+        JSON.stringify({
+          auth: userData.auth,
+          game: game,
+        })
+      );
     } catch (error: any) {
     } finally {
       setLoading(false);
@@ -113,8 +114,10 @@ export function SessionProvider(props: React.PropsWithChildren) {
   };
 
   useEffect(() => {
-    loadStorageData();
-  }, []);
+    if (session) {
+      loadStorageData();
+    }
+  }, [session]);
 
   const signIn = async (email: string, password: string) => {
     try {

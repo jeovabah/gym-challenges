@@ -20,15 +20,15 @@ export const Profile = () => {
                 source={{
                   uri:
                     "https://ui-avatars.com/api/?name=" +
-                    user.auth.user_metadata.name,
+                    user?.auth?.user_metadata?.name,
                 }}
                 className="w-32 h-32 rounded-full mb-4"
               />
               <Text className="text-white font-poppins-semibold text-xl mb-1">
-                {user.auth.user_metadata.name}
+                {user?.auth?.user_metadata?.name}
               </Text>
               <Text className="text-gray-400 font-poppins-regular mb-8">
-                {user.auth.user_metadata.email}
+                {user?.auth?.user_metadata?.email}
               </Text>
 
               <View className="w-full bg-[#1E1E1E] rounded-xl p-4 mb-4">
