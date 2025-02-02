@@ -34,7 +34,9 @@
     "react-native-safe-area-context": "^5.1.0",
     "react-native-svg": "^15.9.0",
     "react-native-webview": "13.12.5",
-    "styled-components": "^6.1.13"
+    "styled-components": "^6.1.13",
+    "expo-image-picker": "~16.0.4",
+    "expo-location": "~18.0.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

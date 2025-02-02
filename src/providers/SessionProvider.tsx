@@ -101,12 +101,12 @@ export function SessionProvider(props: React.PropsWithChildren) {
       const userData = JSON.parse(user || "");
       const game = await getUserGamer(userData.auth.id || "");
 
-      setUser(
-        JSON.stringify({
-          auth: userData.auth,
-          game: game,
-        })
-      );
+      const userStore = {
+        auth: userData.auth,
+        game: game,
+      };
+
+      setUser(JSON.stringify(userStore));
     } catch (error: any) {
     } finally {
       setLoading(false);

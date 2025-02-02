@@ -19,11 +19,13 @@ import {
   CreateChallengeInput,
   getChallenges,
   Challenge as ChallengeType,
+  MetricID,
 } from "@/api/challenges";
 import { ChallengeCard } from "@/components/Challenge/Card";
 import { useSession } from "@/providers/SessionProvider";
 import { Mask } from "@/utils/mask";
 import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
 
 const TAB_BAR_HEIGHT = 64;
 
@@ -43,12 +45,12 @@ export const Challenge = () => {
   const [endDate, setEndDate] = useState(formattedToday);
   const [type, setType] = useState<"public" | "private">("public");
   const [maxParticipants, setMaxParticipants] = useState("");
-  const [workoutType, setWorkoutType] = useState<"regular" | "volume">(
-    "volume"
-  );
+  // challengeCategory armazena a chave original (ex: "frequency", "volume", etc.)
+  const [challengeCategory, setChallengeCategory] = useState("volume");
   const [muscleGroup, setMuscleGroup] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [goal, setGoal] = useState("");
 
   const list = async () => {
     try {
@@ -81,7 +83,6 @@ export const Challenge = () => {
       aspect: [4, 3],
       quality: 1,
     });
-
     if (!result.canceled) {
       setImageUrl(result.assets[0].uri);
     }
@@ -109,10 +110,11 @@ export const Challenge = () => {
       return false;
     }
     if (type === "private" && !inviteCode) {
-      Alert.alert(
-        "Erro",
-        "Por favor, insira um código de convite para o desafio privado"
-      );
+      Alert.alert("Erro", "Por favor, insira um código de convite para o desafio privado");
+      return false;
+    }
+    if (challengeCategory === "specific_goal" && !goal) {
+      Alert.alert("Erro", "Por favor, insira a meta para o desafio de meta específica");
       return false;
     }
     return true;
@@ -121,7 +123,60 @@ export const Challenge = () => {
   const handleCreateChallenge = async () => {
     if (!validateFields()) return;
 
-    const challenge = {
+    // Mapeamento para definir os valores conforme a categoria selecionada.
+    // Os valores permanecem como strings para o BD; os rótulos são traduzidos abaixo.
+    const mapping: Record<string, {
+      metric_id: string;
+      winning_criteria_id: string;
+      registration_method_id: string;
+      unit_id: string;
+      goal?: number;
+    }> = {
+      frequency: {
+        metric_id: "frequency",
+        winning_criteria_id: "maior_numero_treinos",
+        registration_method_id: "checkin_diario",
+        unit_id: "unidades",
+        goal: undefined,
+      },
+      volume: {
+        metric_id: "volume",
+        winning_criteria_id: "maior_soma",
+        registration_method_id: "registrar_volume",
+        unit_id: "kg",
+        goal: undefined,
+      },
+      time: {
+        metric_id: "time",
+        winning_criteria_id: "maior_soma",
+        registration_method_id: "registrar_tempo",
+        unit_id: "minutos",
+        goal: undefined,
+      },
+      execution: {
+        metric_id: "execution",
+        winning_criteria_id: "maior_numero_execucoes",
+        registration_method_id: "registrar_execucoes",
+        unit_id: "repeticoes",
+        goal: undefined,
+      },
+      resistance: {
+        metric_id: "resistance",
+        winning_criteria_id: "maior_tempo_acumulado",
+        registration_method_id: "registrar_tempo",
+        unit_id: "segundos",
+        goal: undefined,
+      },
+      specific_goal: {
+        metric_id: "specific_goal",
+        winning_criteria_id: "primeiro_a_atingir_meta",
+        registration_method_id: "registrar_execucoes",
+        unit_id: "repeticoes",
+        goal: parseInt(goal) || undefined,
+      },
+    };
+
+    const challenge: CreateChallengeInput = {
       creator_id: user?.auth?.id || "",
       title,
       rules:
@@ -132,11 +187,15 @@ export const Challenge = () => {
       reward_points: 15,
       type,
       max_participants: parseInt(maxParticipants),
-      workout_type: workoutType,
       muscle_group: muscleGroup,
       image_url: imageUrl,
       invite_code: type === "private" ? inviteCode : undefined,
-    } as CreateChallengeInput;
+      metric_id: mapping[challengeCategory].metric_id as any,
+      winning_criteria_id: mapping[challengeCategory].winning_criteria_id as any,
+      registration_method_id: mapping[challengeCategory].registration_method_id as any,
+      unit_id: mapping[challengeCategory].unit_id as any,
+      goal: mapping[challengeCategory].goal,
+    };
 
     try {
       const response = await createChallenge(challenge);
@@ -158,10 +217,11 @@ export const Challenge = () => {
     setEndDate(formattedToday);
     setType("public");
     setMaxParticipants("");
-    setWorkoutType("regular");
+    setChallengeCategory("volume");
     setMuscleGroup("");
     setImageUrl("");
     setInviteCode("");
+    setGoal("");
   };
 
   if (loading) {
@@ -194,16 +254,10 @@ export const Challenge = () => {
         <FlatList
           data={challenges}
           renderItem={({ item }) => (
-            <ChallengeCard
-              key={item.id}
-              updateFront={setChallenges}
-              {...item}
-            />
+            <ChallengeCard key={item.id} updateFront={setChallenges} {...item} />
           )}
           keyExtractor={(item) => item.id}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 16 }}
           ListEmptyComponent={() => (
@@ -213,7 +267,6 @@ export const Challenge = () => {
           )}
         />
       </View>
-
       <Modal
         visible={showCreateModal}
         animationType="slide"
@@ -230,11 +283,7 @@ export const Challenge = () => {
                 <Text className="text-white text-lg">✕</Text>
               </TouchableOpacity>
             </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT }}
-            >
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT }}>
               <Text className="text-white mb-2 font-poppins-medium">
                 Título do desafio
               </Text>
@@ -245,7 +294,6 @@ export const Challenge = () => {
                 onChangeText={setTitle}
                 className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
               />
-
               <Text className="text-white mb-2 font-poppins-medium">
                 Data de início
               </Text>
@@ -256,7 +304,6 @@ export const Challenge = () => {
                 onChangeText={(text) => setStartDate(Mask.maskBirthday(text))}
                 className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
               />
-
               <Text className="text-white mb-2 font-poppins-medium">
                 Data de término
               </Text>
@@ -267,41 +314,60 @@ export const Challenge = () => {
                 onChangeText={(text) => setEndDate(Mask.maskBirthday(text))}
                 className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
               />
-
               <View className="flex-row mb-3">
                 <TouchableOpacity
-                  className={`flex-1 p-4 rounded-lg mr-2 ${
-                    type === "public" ? "bg-purple-600" : "bg-zinc-700"
-                  }`}
+                  className={`flex-1 p-4 rounded-lg mr-2 ${type === "public" ? "bg-purple-600" : "bg-zinc-700"}`}
                   onPress={() => setType("public")}
                 >
                   <Text className="text-white text-center">Público</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  className={`flex-1 p-4 rounded-lg ${
-                    type === "private" ? "bg-purple-600" : "bg-zinc-700"
-                  }`}
+                  className={`flex-1 p-4 rounded-lg ${type === "private" ? "bg-purple-600" : "bg-zinc-700"}`}
                   onPress={() => setType("private")}
                 >
                   <Text className="text-white text-center">Privado</Text>
                 </TouchableOpacity>
               </View>
-
-              {type === "private" && (
+              <View className="mb-3">
+                <Text className="text-white mb-2 font-poppins-medium">
+                  Tipo de Desafio
+                </Text>
+                <View className="flex-row flex-wrap">
+                  {[
+                    { key: "frequency", label: "Frequência" },
+                    { key: "volume", label: "Volume" },
+                    { key: "time", label: "Tempo" },
+                    { key: "execution", label: "Execução" },
+                    { key: "resistance", label: "Resistência" },
+                    { key: "specific_goal", label: "Meta Específica" },
+                  ].map((option) => (
+                    <TouchableOpacity
+                      key={option.key}
+                      className={`p-2 rounded-lg m-1 ${challengeCategory === option.key ? "bg-purple-600" : "bg-zinc-700"}`}
+                      onPress={() => setChallengeCategory(option.key)}
+                    >
+                      <Text className="text-white capitalize">
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              {challengeCategory === "specific_goal" && (
                 <>
                   <Text className="text-white mb-2 font-poppins-medium">
-                    Código de convite
+                    Meta (número fixo)
                   </Text>
                   <TextInput
-                    placeholder="Digite um código para seu desafio privado"
+                    placeholder="Ex: 100"
                     placeholderTextColor="#9ca3af"
-                    value={inviteCode}
-                    onChangeText={setInviteCode}
+                    value={goal}
+                    onChangeText={setGoal}
+                    keyboardType="numeric"
                     className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
                   />
                 </>
               )}
-
               <Text className="text-white mb-2 font-poppins-medium">
                 Máximo de participantes
               </Text>
@@ -313,26 +379,6 @@ export const Challenge = () => {
                 keyboardType="numeric"
                 className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
               />
-
-              {/* <View className="flex-row mb-3">
-                <TouchableOpacity
-                  className={`flex-1 p-4 rounded-lg mr-2 ${
-                    workoutType === "regular" ? "bg-purple-600" : "bg-zinc-700"
-                  }`}
-                  onPress={() => setWorkoutType("regular")}
-                >
-                  <Text className="text-white text-center">Regular</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className={`flex-1 p-4 rounded-lg ${
-                    workoutType === "volume" ? "bg-purple-600" : "bg-zinc-700"
-                  }`}
-                  onPress={() => setWorkoutType("volume")}
-                >
-                  <Text className="text-white text-center">Volume</Text>
-                </TouchableOpacity>
-              </View> */}
-
               <Text className="text-white mb-2 font-poppins-medium">
                 Grupo muscular
               </Text>
@@ -343,7 +389,6 @@ export const Challenge = () => {
                 onChangeText={setMuscleGroup}
                 className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
               />
-
               <TouchableOpacity
                 className="bg-zinc-700 rounded-lg p-4 items-center mb-6"
                 onPress={pickImage}
@@ -352,7 +397,6 @@ export const Challenge = () => {
                   {imageUrl ? "Alterar imagem" : "Escolher imagem da galeria"}
                 </Text>
               </TouchableOpacity>
-
               {imageUrl && (
                 <Image
                   source={{ uri: imageUrl }}
@@ -360,14 +404,11 @@ export const Challenge = () => {
                   resizeMode="cover"
                 />
               )}
-
               <TouchableOpacity
                 className="bg-purple-600 rounded-lg p-4 items-center mb-4"
                 onPress={handleCreateChallenge}
               >
-                <Text className="text-white font-poppins-medium">
-                  Criar Desafio
-                </Text>
+                <Text className="text-white font-poppins-medium">Criar Desafio</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

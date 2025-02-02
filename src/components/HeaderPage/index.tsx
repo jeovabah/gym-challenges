@@ -22,7 +22,7 @@ export const HeaderPage = ({ title, hasBack }: HeaderPageProps) => {
             <Ionicons name="chevron-back" size={24} color="white" />
             <Text className="text-white ml-1">Voltar</Text>
           </TouchableOpacity>
-          <Text className="text-2xl font-poppins-bold text-white">{title}</Text>
+          <Text className="text-2xl font-poppins-bold text-white flex-1 text-center">{title}</Text>
         </>
       ) : (
         <Text className="text-2xl font-poppins-bold text-white">| {title}</Text>
