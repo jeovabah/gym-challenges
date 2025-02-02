@@ -20,6 +20,7 @@ import {
   sendMessageChallenge,
   Challenge as ChallengeType,
   showChallenge,
+  finalizeChallenge,
 } from "@/api/challenges";
 import { useSession } from "@/providers/SessionProvider";
 import { HeaderPage } from "@/components/HeaderPage";
@@ -244,6 +245,31 @@ export const ChallengeDetails = ({ route }: any) => {
     } catch (error: any) {
       Alert.alert("Erro", error.message);
     }
+  };
+
+  const handleFinishChallenge = () => {
+    Alert.alert(
+      "Finalizar Desafio",
+      "Tem certeza que deseja finalizar este desafio?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Confirmar",
+          onPress: async () => {
+            try {
+              await finalizeChallenge(challengeId, user?.auth?.id || "");
+              Alert.alert("Sucesso", "Desafio finalizado com sucesso!");
+              fetchDetails();
+            } catch (error: any) {
+              Alert.alert("Erro", error.message);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleRegisterWorkout = async () => {
@@ -476,6 +502,19 @@ export const ChallengeDetails = ({ route }: any) => {
         </View>
 
         <View className="px-4">
+          {state.challenge?.creator_id === user?.auth?.id &&
+            !state.challenge?.status !== "completed" &&
+            !isChallengeEnded() && (
+              <TouchableOpacity
+                className="bg-red-600 rounded-lg p-4 items-center mb-4"
+                onPress={handleFinishChallenge}
+              >
+                <Text className="text-white font-poppins-medium text-lg">
+                  Finalizar Desafio
+                </Text>
+              </TouchableOpacity>
+            )}
+
           {!state.challenge?.isParticipating ? (
             <TouchableOpacity
               className="bg-purple-600 rounded-lg p-4 items-center"

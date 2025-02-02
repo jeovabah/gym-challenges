@@ -364,6 +364,72 @@ export const getChatMessages = async (challenge_id: string): Promise<any[]> => {
   return data || [];
 };
 
+export const finalizeChallenge = async (
+  challenge_id: string,
+  user_id: string
+): Promise<{ winner_id: string; message: string }> => {
+  const { data: challenge, error: challengeError } = await supabase
+    .from("challenges")
+    .select("creator_id, reward_points")
+    .eq("id", challenge_id)
+    .single();
+
+  if (challengeError || !challenge) {
+    throw new Error(`Erro ao buscar desafio: ${challengeError?.message}`);
+  }
+
+  if (challenge.creator_id !== user_id) {
+    throw new Error("Apenas o criador do desafio pode finalizá-lo");
+  }
+
+  const { data: totalVolumes, error: volumeError } = await supabase
+    .from("workout_logs")
+    .select("user_id, volume")
+    .eq("challenge_id", challenge_id);
+
+  if (volumeError) {
+    throw new Error(`Erro ao calcular volumes: ${volumeError.message}`);
+  }
+
+  if (!totalVolumes || totalVolumes.length === 0) {
+    throw new Error("Nenhum volume registrado para este desafio.");
+  }
+
+  const totals = totalVolumes.reduce((acc: { [key: string]: number }, curr) => {
+    acc[curr.user_id] = (acc[curr.user_id] || 0) + curr.volume;
+    return acc;
+  }, {});
+
+  const winner_id = Object.entries(totals).sort(([, a], [, b]) => b - a)[0][0];
+
+  const { error: updateChallengeError } = await supabase
+    .from("challenges")
+    .update({
+      winner_id,
+      status: "completed",
+    })
+    .eq("id", challenge_id);
+
+  if (updateChallengeError) {
+    throw new Error(
+      `Erro ao atualizar desafio: ${updateChallengeError.message}`
+    );
+  }
+
+  const { error: updatePointsError } = await supabase
+    .from("users_clients")
+    .update({
+      points: challenge.reward_points,
+    })
+    .eq("user_id", winner_id);
+
+  if (updatePointsError) {
+    throw new Error(`Erro ao atribuir pontos: ${updatePointsError.message}`);
+  }
+
+  return { winner_id, message: "Desafio finalizado com sucesso!" };
+};
+
 const uploadChallengeImage = async (
   imageUri: string
 ): Promise<string | undefined> => {
