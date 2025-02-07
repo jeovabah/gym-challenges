@@ -34,7 +34,7 @@ const TabNavigation = () => {
           iconActiveColor="#fff"
           iconUnActiveColor="#E0E0E0"
           circleStyle={{
-            backgroundColor: theme.colors.secondary,
+            backgroundColor: theme.colors.primaryDark,
           }}
         />
       )}

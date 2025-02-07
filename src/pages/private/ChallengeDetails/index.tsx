@@ -21,6 +21,7 @@ import {
   Challenge as ChallengeType,
   showChallenge,
   finalizeChallenge,
+  deleteChallenge,
 } from "@/api/challenges";
 import { useSession } from "@/providers/SessionProvider";
 import { HeaderPage } from "@/components/HeaderPage";
@@ -29,6 +30,10 @@ import { ptBR } from "date-fns/locale";
 import { Camera, CameraView } from "expo-camera";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
+import { goBack } from "@/routes/utils";
+import { ELOS_IMAGE } from "@/constants/elo";
+
+type ExerciseSet = { reps: string; weight: string };
 
 type State = {
   challenge: ChallengeType | null;
@@ -49,6 +54,12 @@ type State = {
   savingWorkout: boolean;
   sendingMessage: boolean;
   loadingChat: boolean;
+  muscleGroup: string;
+  numberOfSets: string;
+  exerciseSets: ExerciseSet[];
+  totalWeight: string;
+  enduranceTime: string;
+  stravaData: string;
 };
 
 type Action =
@@ -71,7 +82,16 @@ type Action =
   | { type: "SET_ACCESS_CODE"; payload: string }
   | { type: "SET_SAVING_WORKOUT"; payload: boolean }
   | { type: "SET_SENDING_MESSAGE"; payload: boolean }
-  | { type: "SET_LOADING_CHAT"; payload: boolean };
+  | { type: "SET_LOADING_CHAT"; payload: boolean }
+  | { type: "SET_MUSCLE_GROUP"; payload: string }
+  | { type: "SET_NUMBER_OF_SETS"; payload: string }
+  | {
+      type: "SET_EXERCISE_SET";
+      payload: { index: number; reps?: string; weight?: string };
+    }
+  | { type: "SET_TOTAL_WEIGHT"; payload: string }
+  | { type: "SET_ENDURANCE_TIME"; payload: string }
+  | { type: "SET_STRAVA_DATA"; payload: string };
 
 const initialState: State = {
   challenge: null,
@@ -92,6 +112,17 @@ const initialState: State = {
   savingWorkout: false,
   sendingMessage: false,
   loadingChat: false,
+  muscleGroup: "",
+  numberOfSets: "",
+  exerciseSets: [
+    { reps: "", weight: "" },
+    { reps: "", weight: "" },
+    { reps: "", weight: "" },
+    { reps: "", weight: "" },
+  ],
+  totalWeight: "",
+  enduranceTime: "",
+  stravaData: "",
 };
 
 function reducer(state: State, action: Action): State {
@@ -101,7 +132,10 @@ function reducer(state: State, action: Action): State {
     case "SET_CHAT_MESSAGES":
       return { ...state, chatMessages: action.payload };
     case "ADD_CHAT_MESSAGE":
-      return { ...state, chatMessages: [action.payload, ...state.chatMessages] };
+      return {
+        ...state,
+        chatMessages: [action.payload, ...state.chatMessages],
+      };
     case "SET_LOADING":
       return { ...state, loading: action.payload };
     case "SET_REFRESHING":
@@ -123,7 +157,9 @@ function reducer(state: State, action: Action): State {
     case "UPDATE_CHALLENGE_PARTICIPATION":
       return {
         ...state,
-        challenge: state.challenge ? { ...state.challenge, isParticipating: action.payload } : null,
+        challenge: state.challenge
+          ? { ...state.challenge, isParticipating: action.payload }
+          : null,
       };
     case "TOGGLE_WORKOUT_INFO":
       return { ...state, showWorkoutInfo: !state.showWorkoutInfo };
@@ -139,24 +175,51 @@ function reducer(state: State, action: Action): State {
       return { ...state, sendingMessage: action.payload };
     case "SET_LOADING_CHAT":
       return { ...state, loadingChat: action.payload };
+    // Novas ações:
+    case "SET_MUSCLE_GROUP":
+      return { ...state, muscleGroup: action.payload };
+    case "SET_NUMBER_OF_SETS":
+      return { ...state, numberOfSets: action.payload };
+    case "SET_EXERCISE_SET":
+      const newExerciseSets = state.exerciseSets.map((set, idx) => {
+        if (idx === action.payload.index) {
+          return {
+            reps:
+              action.payload.reps !== undefined
+                ? action.payload.reps
+                : set.reps,
+            weight:
+              action.payload.weight !== undefined
+                ? action.payload.weight
+                : set.weight,
+          };
+        }
+        return set;
+      });
+      return { ...state, exerciseSets: newExerciseSets };
+    case "SET_TOTAL_WEIGHT":
+      return { ...state, totalWeight: action.payload };
+    case "SET_ENDURANCE_TIME":
+      return { ...state, enduranceTime: action.payload };
+    case "SET_STRAVA_DATA":
+      return { ...state, stravaData: action.payload };
     default:
       return state;
   }
 }
 
-// FORMULÁRIO MANUAL – Exibe instrução com ícone e campos dinâmicos
-function ManualWorkoutForm({
+// ---------- COMPONENTES DOS FORMULÁRIOS POR TIPO DE DESAFIO ----------
+
+// 1. Frequência: Apenas foto e registro
+function FrequencyWorkoutForm({
   state,
-  dispatch,
   onTakePhoto,
   onRegisterWorkout,
 }: {
-  state: any;
-  dispatch: any;
+  state: State;
   onTakePhoto: () => void;
   onRegisterWorkout: () => void;
 }) {
-  const metricName = state.challenge?.metric?.name?.toLowerCase() || "";
   return (
     <View>
       {state.hasWorkoutToday ? (
@@ -167,54 +230,6 @@ function ManualWorkoutForm({
         </View>
       ) : (
         <>
-          <View className="flex-row items-center mb-2">
-            <Ionicons name="information-circle-outline" size={16} color="#fff" />
-            <Text className="ml-1 text-white text-xs">
-              {metricName === "tempo_total"
-                ? "Informe o tempo (minutos)"
-                : "Insira repetições, séries e peso (kg)"}
-            </Text>
-          </View>
-          {((metricName === "peso_total") ||
-            (metricName === "repeticoes") ||
-            (metricName === "calorias")) && (
-            <>
-              <TextInput
-                placeholder="Repetições"
-                placeholderTextColor="#9ca3af"
-                value={state.reps}
-                onChangeText={(text) => dispatch({ type: "SET_REPS", payload: text })}
-                keyboardType="numeric"
-                className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
-              />
-              <TextInput
-                placeholder="Séries"
-                placeholderTextColor="#9ca3af"
-                value={state.sets}
-                onChangeText={(text) => dispatch({ type: "SET_SETS", payload: text })}
-                keyboardType="numeric"
-                className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
-              />
-              <TextInput
-                placeholder="Peso (kg)"
-                placeholderTextColor="#9ca3af"
-                value={state.weight}
-                onChangeText={(text) => dispatch({ type: "SET_WEIGHT", payload: text })}
-                keyboardType="numeric"
-                className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
-              />
-            </>
-          )}
-          {metricName === "tempo_total" && (
-            <TextInput
-              placeholder="Tempo de treino (minutos)"
-              placeholderTextColor="#9ca3af"
-              value={state.workoutVolume}
-              onChangeText={(text) => dispatch({ type: "SET_WORKOUT_VOLUME", payload: text })}
-              keyboardType="numeric"
-              className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
-            />
-          )}
           <TouchableOpacity
             className="bg-zinc-700 rounded-lg p-4 mb-4 flex-row justify-center items-center"
             onPress={onTakePhoto}
@@ -262,15 +277,217 @@ function ManualWorkoutForm({
   );
 }
 
-// FORMULÁRIO AUTOMÁTICO – Cronômetro com botões e ícones; a localização é capturada automaticamente
-function StopwatchWorkoutForm({
+// 2. Volume de Treino: Grupo muscular, número de séries e, para cada série, repetições e peso
+function VolumeWorkoutForm({
   state,
   dispatch,
   onTakePhoto,
   onRegisterWorkout,
 }: {
-  state: any;
-  dispatch: any;
+  state: State;
+  dispatch: React.Dispatch<Action>;
+  onTakePhoto: () => void;
+  onRegisterWorkout: () => void;
+}) {
+  return (
+    <View>
+      {state.hasWorkoutToday ? (
+        <View className="bg-zinc-700 p-4 rounded-lg">
+          <Text className="text-white text-center font-poppins-medium">
+            Treino já registrado hoje!
+          </Text>
+        </View>
+      ) : (
+        <>
+          <TextInput
+            placeholder="Grupo Muscular"
+            placeholderTextColor="#9ca3af"
+            value={state.muscleGroup}
+            onChangeText={(text) =>
+              dispatch({ type: "SET_MUSCLE_GROUP", payload: text })
+            }
+            className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
+          />
+          <TextInput
+            placeholder="Número de Séries"
+            placeholderTextColor="#9ca3af"
+            value={state.numberOfSets}
+            onChangeText={(text) =>
+              dispatch({ type: "SET_NUMBER_OF_SETS", payload: text })
+            }
+            keyboardType="numeric"
+            className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
+          />
+          {state.numberOfSets &&
+            !isNaN(parseInt(state.numberOfSets)) &&
+            Array.from({ length: parseInt(state.numberOfSets) }).map(
+              (_, index) => (
+                <View key={index} className="mb-3">
+                  <Text className="text-white">Série {index + 1}</Text>
+                  <TextInput
+                    placeholder="Repetições"
+                    placeholderTextColor="#9ca3af"
+                    value={state.exerciseSets[index]?.reps}
+                    onChangeText={(text) =>
+                      dispatch({
+                        type: "SET_EXERCISE_SET",
+                        payload: { index, reps: text },
+                      })
+                    }
+                    keyboardType="numeric"
+                    className="bg-zinc-700 rounded-lg text-white p-4 mb-2"
+                  />
+                  <TextInput
+                    placeholder="Peso (kg)"
+                    placeholderTextColor="#9ca3af"
+                    value={state.exerciseSets[index]?.weight}
+                    onChangeText={(text) =>
+                      dispatch({
+                        type: "SET_EXERCISE_SET",
+                        payload: { index, weight: text },
+                      })
+                    }
+                    keyboardType="numeric"
+                    className="bg-zinc-700 rounded-lg text-white p-4 mb-2"
+                  />
+                </View>
+              )
+            )}
+          <TouchableOpacity
+            className="bg-zinc-700 rounded-lg p-4 mb-4 flex-row justify-center items-center"
+            onPress={onTakePhoto}
+          >
+            <Ionicons name="camera-outline" size={20} color="#fff" />
+            <Text className="ml-2 text-white font-poppins-medium">
+              {state.workoutImage ? "Tirar outra foto" : "Tirar foto do treino"}
+            </Text>
+          </TouchableOpacity>
+          {state.workoutImage ? (
+            <Image
+              source={{ uri: state.workoutImage }}
+              style={{ height: 200, borderRadius: 8 }}
+              resizeMode="cover"
+              className="mb-4"
+            />
+          ) : (
+            <View
+              style={{
+                height: 200,
+                borderRadius: 8,
+                backgroundColor: "#333",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+              className="mb-4"
+            >
+              <Ionicons name="alert-circle-outline" size={40} color="#fff" />
+              <Text className="text-white">Sem Imagem</Text>
+            </View>
+          )}
+          <TouchableOpacity
+            className="bg-purple-600 rounded-lg p-4 flex-row justify-center items-center"
+            onPress={onRegisterWorkout}
+            disabled={state.savingWorkout}
+          >
+            <Ionicons name="save-outline" size={20} color="#fff" />
+            <Text className="ml-2 text-white font-poppins-medium text-lg">
+              Salvar Treino
+            </Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  );
+}
+
+// 3. Por Peso Total: Entrada de um valor numérico representando o peso total
+function TotalWeightWorkoutForm({
+  state,
+  dispatch,
+  onTakePhoto,
+  onRegisterWorkout,
+}: {
+  state: State;
+  dispatch: React.Dispatch<Action>;
+  onTakePhoto: () => void;
+  onRegisterWorkout: () => void;
+}) {
+  return (
+    <View>
+      {state.hasWorkoutToday ? (
+        <View className="bg-zinc-700 p-4 rounded-lg">
+          <Text className="text-white text-center font-poppins-medium">
+            Treino já registrado hoje!
+          </Text>
+        </View>
+      ) : (
+        <>
+          <TextInput
+            placeholder="Peso Total (kg)"
+            placeholderTextColor="#9ca3af"
+            value={state.totalWeight}
+            onChangeText={(text) =>
+              dispatch({ type: "SET_TOTAL_WEIGHT", payload: text })
+            }
+            keyboardType="numeric"
+            className="bg-zinc-700 rounded-lg text-white p-4 mb-3"
+          />
+          <TouchableOpacity
+            className="bg-zinc-700 rounded-lg p-4 mb-4 flex-row justify-center items-center"
+            onPress={onTakePhoto}
+          >
+            <Ionicons name="camera-outline" size={20} color="#fff" />
+            <Text className="ml-2 text-white font-poppins-medium">
+              {state.workoutImage ? "Tirar outra foto" : "Tirar foto do treino"}
+            </Text>
+          </TouchableOpacity>
+          {state.workoutImage ? (
+            <Image
+              source={{ uri: state.workoutImage }}
+              style={{ height: 200, borderRadius: 8 }}
+              resizeMode="cover"
+              className="mb-4"
+            />
+          ) : (
+            <View
+              style={{
+                height: 200,
+                borderRadius: 8,
+                backgroundColor: "#333",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+              className="mb-4"
+            >
+              <Ionicons name="alert-circle-outline" size={40} color="#fff" />
+              <Text className="text-white">Sem Imagem</Text>
+            </View>
+          )}
+          <TouchableOpacity
+            className="bg-purple-600 rounded-lg p-4 flex-row justify-center items-center"
+            onPress={onRegisterWorkout}
+            disabled={state.savingWorkout}
+          >
+            <Ionicons name="save-outline" size={20} color="#fff" />
+            <Text className="ml-2 text-white font-poppins-medium text-lg">
+              Salvar Treino
+            </Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  );
+}
+
+// 4. Resistência: Cronômetro para informar o tempo total de treino
+function EnduranceWorkoutForm({
+  state,
+  dispatch,
+  onTakePhoto,
+  onRegisterWorkout,
+}: {
+  state: State;
+  dispatch: React.Dispatch<Action>;
   onTakePhoto: () => void;
   onRegisterWorkout: () => void;
 }) {
@@ -292,7 +509,7 @@ function StopwatchWorkoutForm({
     if (running && intervalId) {
       clearInterval(intervalId);
       setRunning(false);
-      dispatch({ type: "SET_WORKOUT_VOLUME", payload: (time / 60).toFixed(2) });
+      dispatch({ type: "SET_ENDURANCE_TIME", payload: (time / 60).toFixed(2) });
     }
   };
 
@@ -301,10 +518,9 @@ function StopwatchWorkoutForm({
     setTime(0);
     setRunning(false);
     setIntervalId(null);
-    dispatch({ type: "SET_WORKOUT_VOLUME", payload: "0" });
+    dispatch({ type: "SET_ENDURANCE_TIME", payload: "0" });
   };
 
-  // Se o usuário tirar uma foto, o cronômetro é reiniciado automaticamente.
   useEffect(() => {
     if (state.workoutImage) {
       resetTimer();
@@ -380,79 +596,180 @@ function StopwatchWorkoutForm({
       >
         <Ionicons name="save-outline" size={20} color="#fff" />
         <Text className="ml-2 text-white font-poppins-medium text-lg">
-          Salvar Treino (Stopwatch)
+          Salvar Treino
         </Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-// Renderiza o formulário de registro conforme o método e a métrica
+// 5. Metas de Distância: Busca (simulada) de dados do Strava e registro
+function DistanceGoalWorkoutForm({
+  state,
+  dispatch,
+  onTakePhoto,
+  onRegisterWorkout,
+}: {
+  state: State;
+  dispatch: React.Dispatch<Action>;
+  onTakePhoto: () => void;
+  onRegisterWorkout: () => void;
+}) {
+  const fetchStravaData = async () => {
+    // Aqui você implementaria a chamada à API do Strava (note que em React Native
+    // não há acesso ao DOM, então use a API adequada ou uma biblioteca)
+    try {
+      // Simulação de delay e retorno de dados:
+      const data = "5.2"; // valor fictício
+      dispatch({ type: "SET_STRAVA_DATA", payload: data });
+    } catch (error) {
+      Alert.alert("Erro", "Não foi possível obter dados do Strava");
+    }
+  };
+
+  return (
+    <View>
+      {state.hasWorkoutToday ? (
+        <View className="bg-zinc-700 p-4 rounded-lg">
+          <Text className="text-white text-center font-poppins-medium">
+            Treino já registrado hoje!
+          </Text>
+        </View>
+      ) : (
+        <>
+          <TouchableOpacity
+            className="bg-yellow-600 rounded-lg p-4 flex-row justify-center items-center mb-4"
+            onPress={fetchStravaData}
+          >
+            <Ionicons name="trending-up-outline" size={20} color="#fff" />
+            <Text className="ml-2 text-white font-poppins-medium">
+              Buscar dados do Strava
+            </Text>
+          </TouchableOpacity>
+          {state.stravaData ? (
+            <View className="bg-zinc-700 rounded-lg p-4 mb-4">
+              <Text className="text-white text-center">
+                Dados do Strava: {state.stravaData}km
+              </Text>
+            </View>
+          ) : null}
+          <TouchableOpacity
+            className="bg-zinc-700 rounded-lg p-4 mb-4 flex-row justify-center items-center"
+            onPress={onTakePhoto}
+          >
+            <Ionicons name="camera-outline" size={20} color="#fff" />
+            <Text className="ml-2 text-white font-poppins-medium">
+              {state.workoutImage ? "Tirar outra foto" : "Tirar foto do treino"}
+            </Text>
+          </TouchableOpacity>
+          {state.workoutImage ? (
+            <Image
+              source={{ uri: state.workoutImage }}
+              style={{ height: 200, borderRadius: 8 }}
+              resizeMode="cover"
+              className="mb-4"
+            />
+          ) : (
+            <View
+              style={{
+                height: 200,
+                borderRadius: 8,
+                backgroundColor: "#333",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+              className="mb-4"
+            >
+              <Ionicons name="alert-circle-outline" size={40} color="#fff" />
+              <Text className="text-white">Sem Imagem</Text>
+            </View>
+          )}
+          <TouchableOpacity
+            className="bg-purple-600 rounded-lg p-4 flex-row justify-center items-center"
+            onPress={onRegisterWorkout}
+            disabled={state.savingWorkout}
+          >
+            <Ionicons name="save-outline" size={20} color="#fff" />
+            <Text className="ml-2 text-white font-poppins-medium text-lg">
+              Salvar Treino
+            </Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  );
+}
+
+// Renderiza o formulário de registro conforme o tipo de desafio
 function RenderWorkoutForm({
   state,
   dispatch,
   onTakePhoto,
   onRegisterWorkout,
 }: {
-  state: any;
-  dispatch: any;
+  state: State;
+  dispatch: React.Dispatch<Action>;
   onTakePhoto: () => void;
   onRegisterWorkout: () => void;
 }) {
-  const registrationMethod = state.challenge?.registration_method?.name?.toLowerCase();
-  const metricName = state.challenge?.metric?.name?.toLowerCase();
-  if (registrationMethod === "manual") {
-    return (
-      <ManualWorkoutForm
-        state={state}
-        dispatch={dispatch}
-        onTakePhoto={onTakePhoto}
-        onRegisterWorkout={onRegisterWorkout}
-      />
-    );
-  } else if (registrationMethod === "automatico") {
-    if (metricName === "tempo_total") {
+  const challengeType = state.challenge?.metric?.name?.toLowerCase();
+  switch (challengeType) {
+    case "frequência":
       return (
-        <StopwatchWorkoutForm
+        <FrequencyWorkoutForm
+          state={state}
+          onTakePhoto={onTakePhoto}
+          onRegisterWorkout={onRegisterWorkout}
+        />
+      );
+    case "volume de treino":
+      return (
+        <VolumeWorkoutForm
           state={state}
           dispatch={dispatch}
           onTakePhoto={onTakePhoto}
           onRegisterWorkout={onRegisterWorkout}
         />
       );
-    } else if (
-      metricName === "peso_total" ||
-      metricName === "repeticoes" ||
-      metricName === "calorias"
-    ) {
+    case "por peso total":
       return (
-        <ManualWorkoutForm
+        <TotalWeightWorkoutForm
           state={state}
           dispatch={dispatch}
           onTakePhoto={onTakePhoto}
           onRegisterWorkout={onRegisterWorkout}
         />
       );
-    } else {
+    case "resistencia":
+      return (
+        <EnduranceWorkoutForm
+          state={state}
+          dispatch={dispatch}
+          onTakePhoto={onTakePhoto}
+          onRegisterWorkout={onRegisterWorkout}
+        />
+      );
+    case "metas de distancia":
+      return (
+        <DistanceGoalWorkoutForm
+          state={state}
+          dispatch={dispatch}
+          onTakePhoto={onTakePhoto}
+          onRegisterWorkout={onRegisterWorkout}
+        />
+      );
+    default:
       return (
         <View className="bg-zinc-700 p-4 rounded-lg">
           <Text className="text-white">
-            Método de registro ou métrica não definidos ou desconhecidos.
+            Tipo de desafio não definido ou desconhecido.
           </Text>
         </View>
       );
-    }
-  } else {
-    return (
-      <View className="bg-zinc-700 p-4 rounded-lg">
-        <Text className="text-white">
-          Método de registro não definido ou desconhecido.
-        </Text>
-      </View>
-    );
   }
 }
 
+// --------------------- COMPONENTE PRINCIPAL ---------------------
 export const ChallengeDetails = ({ route }: any) => {
   const { challengeId } = route.params;
   const { user } = useSession();
@@ -476,14 +793,6 @@ export const ChallengeDetails = ({ route }: any) => {
       });
     })();
   }, []);
-
-  const calculateVolume = () => {
-    const reps = parseInt(state.reps) || 0;
-    const sets = parseInt(state.sets) || 0;
-    const weight = parseInt(state.weight) || 0;
-    const volume = reps * sets * weight;
-    dispatch({ type: "SET_WORKOUT_VOLUME", payload: volume.toString() });
-  };
 
   const takePhoto = async () => {
     try {
@@ -550,6 +859,29 @@ export const ChallengeDetails = ({ route }: any) => {
     }
   };
 
+  const handleDeleteChallenge = () => {
+    Alert.alert(
+      "Deletar Desafio",
+      "Tem certeza que deseja deletar este desafio?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Confirmar",
+          onPress: async () => {
+            try {
+              await deleteChallenge(challengeId);
+              Alert.alert("Sucesso", "Desafio deletado com sucesso!");
+              fetchDetails();
+              goBack();
+            } catch (error: any) {
+              Alert.alert("Erro", error.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleFinishChallenge = () => {
     Alert.alert(
       "Finalizar Desafio",
@@ -572,39 +904,107 @@ export const ChallengeDetails = ({ route }: any) => {
     );
   };
 
+  // Atualizado para validar os dados conforme o tipo de desafio
   const handleRegisterWorkout = async () => {
     try {
-      if (
-        !state.workoutVolume &&
-        state.challenge?.registration_method?.name.toLowerCase() !== "manual"
-      ) {
-        Alert.alert("Erro", "Preencha as informações de treino (volume ou tempo)!");
-        return;
-      }
-      if (!state.workoutImage) {
-        Alert.alert("Erro", "Tire uma foto do seu treino!");
-        return;
+      const challengeType = state.challenge?.metric?.name?.toLowerCase();
+      if (challengeType === "frequência") {
+        if (!state.workoutImage) {
+          Alert.alert("Erro", "Tire uma foto do seu treino!");
+          return;
+        }
+      } else if (challengeType === "volume de treino") {
+        if (!state.muscleGroup || !state.numberOfSets) {
+          Alert.alert(
+            "Erro",
+            "Preencha o grupo muscular e o número de séries!"
+          );
+          return;
+        }
+        const numSets = parseInt(state.numberOfSets);
+        for (let i = 0; i < numSets; i++) {
+          const set = state.exerciseSets[i];
+          if (!set || !set.reps || !set.weight) {
+            Alert.alert("Erro", `Preencha os dados da série ${i + 1}`);
+            return;
+          }
+        }
+      } else if (challengeType === "por peso total") {
+        if (!state.totalWeight) {
+          Alert.alert("Erro", "Preencha o peso total!");
+          return;
+        }
+        if (!state.workoutImage) {
+          Alert.alert("Erro", "Tire uma foto do seu treino!");
+          return;
+        }
+      } else if (challengeType === "resistencia") {
+        if (!state.enduranceTime || state.enduranceTime === "0") {
+          Alert.alert("Erro", "Preencha o tempo do treino!");
+          return;
+        }
+        if (!state.workoutImage) {
+          Alert.alert("Erro", "Tire uma foto do seu treino!");
+          return;
+        }
+      } else if (challengeType === "metas de distancia") {
+        if (!state.stravaData) {
+          Alert.alert("Erro", "Busque os dados do Strava!");
+          return;
+        }
+        if (!state.workoutImage) {
+          Alert.alert("Erro", "Tire uma foto do seu treino!");
+          return;
+        }
       }
       if (state.hasWorkoutToday) {
         Alert.alert("Aviso", "Você já registrou um treino hoje!");
         return;
       }
       dispatch({ type: "SET_SAVING_WORKOUT", payload: true });
-      await registerWorkout({
+      // Prepara o payload de acordo com o tipo
+      const payload: any = {
         user_id: user?.auth?.id || "",
         challenge_id: challengeId,
-        muscle_group: state.challenge?.muscle_group || "",
-        volume: parseInt(state.workoutVolume, 10),
         image_url: state.workoutImage,
         location: state.location,
-      });
+      };
+      if (challengeType === "frequência") {
+        // sem dados adicionais
+      } else if (challengeType === "volume de treino") {
+        payload.muscle_group = state.muscleGroup;
+        payload.number_of_sets = state.numberOfSets;
+        payload.exercise_sets = state.exerciseSets.slice(
+          0,
+          parseInt(state.numberOfSets)
+        );
+      } else if (challengeType === "por peso total") {
+        payload.total_weight = parseInt(state.totalWeight);
+      } else if (challengeType === "resistencia") {
+        payload.endurance_time = parseFloat(state.enduranceTime);
+      } else if (challengeType === "metas de distancia") {
+        payload.strava_data = state.stravaData;
+      }
+      await registerWorkout(payload);
       dispatch({ type: "SET_HAS_WORKOUT_TODAY", payload: true });
       Alert.alert("Sucesso", "Treino registrado com sucesso!");
-      dispatch({ type: "SET_WORKOUT_VOLUME", payload: "" });
+      // Reseta os campos:
       dispatch({ type: "SET_WORKOUT_IMAGE", payload: "" });
       dispatch({ type: "SET_REPS", payload: "" });
       dispatch({ type: "SET_SETS", payload: "" });
       dispatch({ type: "SET_WEIGHT", payload: "" });
+      dispatch({ type: "SET_WORKOUT_VOLUME", payload: "" });
+      dispatch({ type: "SET_MUSCLE_GROUP", payload: "" });
+      dispatch({ type: "SET_NUMBER_OF_SETS", payload: "" });
+      for (let i = 0; i < 4; i++) {
+        dispatch({
+          type: "SET_EXERCISE_SET",
+          payload: { index: i, reps: "", weight: "" },
+        });
+      }
+      dispatch({ type: "SET_TOTAL_WEIGHT", payload: "" });
+      dispatch({ type: "SET_ENDURANCE_TIME", payload: "" });
+      dispatch({ type: "SET_STRAVA_DATA", payload: "" });
       fetchDetails();
     } catch (error: any) {
       Alert.alert("Erro", error.message);
@@ -622,7 +1022,9 @@ export const ChallengeDetails = ({ route }: any) => {
         message: state.message,
         user: { name: user?.auth?.user_metadata?.name },
         // Ajusta o fuso horário: subtrai 3 horas do horário UTC
-        created_at: new Date(new Date().getTime() - 3 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date(
+          new Date().getTime() - 3 * 60 * 60 * 1000
+        ).toISOString(),
       };
       await sendMessageChallenge({
         user_id: user?.auth?.id || "",
@@ -670,28 +1072,29 @@ export const ChallengeDetails = ({ route }: any) => {
     }
   }, [showChat]);
 
-  useEffect(() => {
-    if (state.reps && state.sets && state.weight) {
-      calculateVolume();
-    }
-  }, [state.reps, state.sets, state.weight]);
+  // Modal da câmera (preserva o estado do cronômetro, se aplicável)
+  const renderCameraModal = () => (
+    <Modal
+      visible={showCamera}
+      animationType="slide"
+      onRequestClose={() => setShowCamera(false)}
+    >
+      <CameraView ref={cameraRef} style={{ flex: 1 }}>
+        <View className="flex-1 bg-transparent flex-row justify-center items-end pb-10">
+          <TouchableOpacity
+            onPress={takePicture}
+            className="w-16 h-16 bg-white rounded-full"
+          />
+        </View>
+      </CameraView>
+    </Modal>
+  );
 
   const isChallengeEnded = () => {
     if (!state.challenge?.end_date) return false;
     const endDate = addDays(new Date(state.challenge.end_date), 1);
     return isAfter(new Date(), endDate);
   };
-
-  // Modal da câmera para preservar o estado do cronômetro
-  const renderCameraModal = () => (
-    <Modal visible={showCamera} animationType="slide" onRequestClose={() => setShowCamera(false)}>
-      <CameraView ref={cameraRef} style={{ flex: 1 }}>
-        <View className="flex-1 bg-transparent flex-row justify-center items-end pb-10">
-          <TouchableOpacity onPress={takePicture} className="w-16 h-16 bg-white rounded-full" />
-        </View>
-      </CameraView>
-    </Modal>
-  );
 
   if (state.loading) {
     return (
@@ -706,10 +1109,26 @@ export const ChallengeDetails = ({ route }: any) => {
       {renderCameraModal()}
       <ScrollView>
         <View className="px-4 my-4">
-          <HeaderPage hasBack title={state.challenge?.title || "Detalhes do Desafio"} />
-          <View style={{ height: 200, borderRadius: 12, backgroundColor: "#333", justifyContent: "center", alignItems: "center" }} className="mt-4">
+          <HeaderPage
+            hasBack
+            title={state.challenge?.title || "Detalhes do Desafio"}
+          />
+          <View
+            style={{
+              height: 200,
+              borderRadius: 12,
+              backgroundColor: "#333",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            className="mt-4"
+          >
             {state.challenge?.image_url ? (
-              <Image source={{ uri: state.challenge.image_url }} style={{ height: 200, borderRadius: 12 }} resizeMode="cover" />
+              <Image
+                source={{ uri: state.challenge.image_url }}
+                style={{ height: 200, borderRadius: 12 }}
+                resizeMode="cover"
+              />
             ) : (
               <Text className="text-white">Sem Imagem</Text>
             )}
@@ -718,15 +1137,30 @@ export const ChallengeDetails = ({ route }: any) => {
             className="mt-4 bg-zinc-800 p-4 rounded-lg flex-row justify-between items-center"
             onPress={() => dispatch({ type: "TOGGLE_WORKOUT_INFO" })}
           >
-            <Text className="text-white font-poppins-medium text-lg">Informações do Desafio</Text>
-            <Ionicons name={state.showWorkoutInfo ? "chevron-up" : "chevron-down"} size={24} color="white" />
+            <Text className="text-white font-poppins-medium text-lg">
+              Informações do Desafio
+            </Text>
+            <Ionicons
+              name={state.showWorkoutInfo ? "chevron-up" : "chevron-down"}
+              size={24}
+              color="white"
+            />
           </TouchableOpacity>
           {state.showWorkoutInfo && (
             <View className="bg-zinc-800 px-4 pb-4 rounded-b-lg">
-              <Text className="text-gray-300 mb-1">Métrica: {state.challenge?.metric?.name || "—"}</Text>
-              <Text className="text-gray-300 mb-1">Método de Registro: {state.challenge?.registration_method?.name || "—"}</Text>
-              <Text className="text-gray-300 mb-1">Unidade: {state.challenge?.unit?.name || "—"}</Text>
-              <Text className="text-gray-300 mb-1">Meta: {state.challenge?.goal || "—"}</Text>
+              <Text className="text-gray-300 mb-1">
+                Métrica: {state.challenge?.metric?.name || "—"}
+              </Text>
+              <Text className="text-gray-300 mb-1">
+                Método de Registro:{" "}
+                {state.challenge?.registration_method?.name || "—"}
+              </Text>
+              <Text className="text-gray-300 mb-1">
+                Unidade: {state.challenge?.unit?.name || "—"}
+              </Text>
+              <Text className="text-gray-300 mb-1">
+                Meta: {state.challenge?.goal || "—"}
+              </Text>
             </View>
           )}
         </View>
@@ -734,28 +1168,63 @@ export const ChallengeDetails = ({ route }: any) => {
           {state.challenge?.creator_id === user?.auth?.id &&
             state.challenge?.status !== "completed" &&
             !isChallengeEnded() && (
-              <TouchableOpacity
-                className="bg-red-600 rounded-lg p-4 items-center mb-4"
-                onPress={handleFinishChallenge}
-              >
-                <Text className="text-white font-poppins-medium text-lg">Finalizar Desafio</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  className="bg-green-600 rounded-lg p-4 items-center mb-4"
+                  onPress={handleFinishChallenge}
+                >
+                  <Text className="text-white font-poppins-medium text-lg">
+                    Finalizar Desafio
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className="bg-red-600 rounded-lg p-4 items-center mb-4"
+                  onPress={handleDeleteChallenge}
+                >
+                  <Text className="text-white font-poppins-medium text-lg">
+                    Deletar Desafio
+                  </Text>
+                </TouchableOpacity>
+              </>
             )}
           {!state.challenge?.isParticipating ? (
             <TouchableOpacity
               className="bg-purple-600 rounded-lg p-4 items-center"
               onPress={handleJoinChallenge}
             >
-              <Text className="text-white font-poppins-medium text-lg">Participar do desafio</Text>
+              <Text className="text-white font-poppins-medium text-lg">
+                Participar do desafio
+              </Text>
             </TouchableOpacity>
           ) : state.challenge?.status === "completed" || isChallengeEnded() ? (
             <View className="bg-zinc-800 p-4 rounded-lg">
-              <Text className="text-white text-center">Este desafio já foi finalizado</Text>
+              <Text className="text-white text-center font-poppins-medium text-lg mb-2">
+                Este desafio já foi finalizado
+              </Text>
+              <View className="flex-row items-center justify-center">
+                <Text className="text-white text-center mr-2">Vencedor:</Text>
+                {state.challenge?.winner?.name ? (
+                  <View className="flex-row items-center">
+                    <Text className="text-white text-center">{state.challenge.winner.name}</Text>
+                    {state.challenge.winner?.elo?.id && (
+                      <Image 
+                        source={ELOS_IMAGE[state?.challenge?.winner?.elo?.id]}
+                        style={{width: 32, height: 32}}
+                        className="ml-2"
+                      />
+                    )}
+                  </View>
+                ) : (
+                  <Text className="text-white text-center">Nenhum vencedor definido</Text>
+                )}
+              </View>
             </View>
           ) : (
             <>
               <View className="bg-zinc-800 p-4 rounded-lg mb-4">
-                <Text className="text-white font-poppins-medium text-lg mb-3">Registrar Treino</Text>
+                <Text className="text-white font-poppins-medium text-lg mb-3">
+                  Registrar Treino
+                </Text>
                 <RenderWorkoutForm
                   state={state}
                   dispatch={dispatch}
@@ -767,45 +1236,71 @@ export const ChallengeDetails = ({ route }: any) => {
                 className="bg-purple-600 rounded-lg p-4 items-center"
                 onPress={() => setShowChat(true)}
               >
-                <Text className="text-white font-poppins-medium text-lg">Abrir Chat do Desafio</Text>
+                <Text className="text-white font-poppins-medium text-lg">
+                  Abrir Chat do Desafio
+                </Text>
               </TouchableOpacity>
             </>
           )}
         </View>
       </ScrollView>
-      <Modal visible={showAccessCodeModal} animationType="slide" transparent={true} onRequestClose={() => setShowAccessCodeModal(false)}>
+      <Modal
+        visible={showAccessCodeModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAccessCodeModal(false)}
+      >
         <View className="flex-1 bg-black/50 justify-center items-center">
           <View className="bg-background w-4/5 rounded-3xl p-4">
-            <Text className="text-white font-poppins-medium text-lg mb-4 text-center">Digite o código de acesso</Text>
+            <Text className="text-white font-poppins-medium text-lg mb-4 text-center">
+              Digite o código de acesso
+            </Text>
             <TextInput
               placeholder="Código de acesso"
               placeholderTextColor="#9ca3af"
               value={state.accessCode}
-              onChangeText={(text) => dispatch({ type: "SET_ACCESS_CODE", payload: text })}
+              onChangeText={(text) =>
+                dispatch({ type: "SET_ACCESS_CODE", payload: text })
+              }
               className="bg-zinc-700 rounded-lg text-white p-4 mb-4"
             />
             <TouchableOpacity
               className="bg-purple-600 rounded-lg p-4 items-center flex-row justify-center mb-2"
               onPress={handleJoinPrivateChallenge}
             >
-              <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
-              <Text className="ml-2 text-white font-poppins-medium">Confirmar</Text>
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={20}
+                color="#fff"
+              />
+              <Text className="ml-2 text-white font-poppins-medium">
+                Confirmar
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               className="bg-zinc-700 rounded-lg p-4 items-center flex-row justify-center"
               onPress={() => setShowAccessCodeModal(false)}
             >
               <Ionicons name="close-circle-outline" size={20} color="#fff" />
-              <Text className="ml-2 text-white font-poppins-medium">Cancelar</Text>
+              <Text className="ml-2 text-white font-poppins-medium">
+                Cancelar
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-      <Modal visible={showChat} animationType="slide" transparent={true} onRequestClose={() => setShowChat(false)}>
+      <Modal
+        visible={showChat}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowChat(false)}
+      >
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-background h-3/4 rounded-t-3xl p-4">
             <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-white font-poppins-medium text-lg">Chat do Desafio</Text>
+              <Text className="text-white font-poppins-medium text-lg">
+                Chat do Desafio
+              </Text>
               <TouchableOpacity onPress={() => setShowChat(false)}>
                 <Text className="text-white text-lg">✕</Text>
               </TouchableOpacity>
@@ -818,28 +1313,50 @@ export const ChallengeDetails = ({ route }: any) => {
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => {
                   const createdAt = new Date(item?.created_at);
-                  const adjustedDate = new Date(createdAt.getTime() - 3 * 60 * 60 * 1000);
+                  const adjustedDate = new Date(
+                    createdAt.getTime() - 3 * 60 * 60 * 1000
+                  );
                   return (
                     <View className="bg-zinc-800 p-3 rounded-lg mb-2">
                       <View className="flex-row justify-between mb-1">
-                        <Text className="text-purple-400 font-poppins-medium">{item.user?.name}</Text>
-                        <Text className="text-gray-400">{format(adjustedDate, "HH:mm", { locale: ptBR })}</Text>
+                        <Text className="text-purple-400 font-poppins-medium">
+                          {item.user?.name}
+                        </Text>
+                        <Text className="text-gray-400">
+                          {format(adjustedDate, "HH:mm", { locale: ptBR })}
+                        </Text>
                       </View>
                       <Text className="text-white mb-2">{item?.message}</Text>
                       {item.image_url && (
-                        <Image source={{ uri: item.image_url }} style={{ height: 150, borderRadius: 8 }} resizeMode="cover" />
+                        <Image
+                          source={{ uri: item.image_url }}
+                          style={{ height: 150, borderRadius: 8 }}
+                          resizeMode="cover"
+                        />
                       )}
                       {item.workout_log && (
                         <View className="bg-zinc-700 p-2 rounded-lg mt-2">
-                          <Text className="text-purple-400">Registro de Treino</Text>
-                          <Text className="text-white">Volume: {item.workout_log.volume}</Text>
-                          <Text className="text-white">Grupo Muscular: {item.workout_log.muscle_group}</Text>
+                          <Text className="text-purple-400">
+                            Registro de Treino
+                          </Text>
+                          <Text className="text-white">
+                            Volume: {item.workout_log.volume}
+                          </Text>
+                          <Text className="text-white">
+                            Grupo Muscular: {item.workout_log.muscle_group}
+                          </Text>
                         </View>
                       )}
                     </View>
                   );
                 }}
-                refreshControl={<RefreshControl refreshing={state.refreshing} onRefresh={onRefresh} tintColor="#fff" />}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={state.refreshing}
+                    onRefresh={onRefresh}
+                    tintColor="#fff"
+                  />
+                }
                 className="flex-1"
               />
             )}
@@ -848,7 +1365,9 @@ export const ChallengeDetails = ({ route }: any) => {
                 placeholder="Digite sua mensagem"
                 placeholderTextColor="#9ca3af"
                 value={state.message}
-                onChangeText={(text) => dispatch({ type: "SET_MESSAGE", payload: text })}
+                onChangeText={(text) =>
+                  dispatch({ type: "SET_MESSAGE", payload: text })
+                }
                 className="bg-zinc-700 rounded-lg text-white p-4 mb-2"
               />
               <TouchableOpacity
@@ -861,7 +1380,9 @@ export const ChallengeDetails = ({ route }: any) => {
                 ) : (
                   <>
                     <Ionicons name="send-outline" size={20} color="#fff" />
-                    <Text className="ml-2 text-white font-poppins-medium">Enviar Mensagem</Text>
+                    <Text className="ml-2 text-white font-poppins-medium">
+                      Enviar Mensagem
+                    </Text>
                   </>
                 )}
               </TouchableOpacity>

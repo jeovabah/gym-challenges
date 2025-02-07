@@ -68,6 +68,7 @@ type AuthContextType = {
   session?: string | null;
   user?: User | null;
   isLoading: boolean;
+  getUser: () => Promise<void>;
 };
 
 const AuthContext = React.createContext<AuthContextType>({
@@ -77,6 +78,7 @@ const AuthContext = React.createContext<AuthContextType>({
   user: null,
   isLoading: false,
   register: async () => {},
+  getUser: async () => {},
 });
 
 export function useSession() {
@@ -95,18 +97,21 @@ export function SessionProvider(props: React.PropsWithChildren) {
   const [[userLoading, user], setUser] = useStorageState("user");
   const [loading, setLoading] = useState(false);
 
+  const getUser = async () => {
+    const userData = JSON.parse(user || "");
+    const game = await getUserGamer(userData.auth.id || "");
+    const userStore = {
+      auth: userData.auth,
+      game: game,
+    };
+
+    setUser(JSON.stringify(userStore));
+  };
+
   const loadStorageData = async () => {
     try {
       setLoading(true);
-      const userData = JSON.parse(user || "");
-      const game = await getUserGamer(userData.auth.id || "");
-
-      const userStore = {
-        auth: userData.auth,
-        game: game,
-      };
-
-      setUser(JSON.stringify(userStore));
+      await getUser();
     } catch (error: any) {
     } finally {
       setLoading(false);
@@ -171,6 +176,7 @@ export function SessionProvider(props: React.PropsWithChildren) {
         user: user ? JSON.parse(user) : null,
         isLoading: isLoading || userLoading || loading,
         register,
+        getUser,
       }}
     >
       {props.children}
