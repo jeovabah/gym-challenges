@@ -36,7 +36,8 @@
     "react-native-webview": "13.12.5",
     "styled-components": "^6.1.13",
     "expo-image-picker": "~16.0.4",
-    "expo-location": "~18.0.5"
+    "expo-location": "~18.0.5",
+    "expo-updates": "~0.26.17"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
