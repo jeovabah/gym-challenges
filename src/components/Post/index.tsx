@@ -1,6 +1,6 @@
 import { View, Text, Image, TouchableOpacity, TextInput } from "react-native";
 import { MaterialIcons, FontAwesome } from "@expo/vector-icons";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Comment } from "./types";
 import { CommentItem } from "../CommentItem";
 import { CommentModal } from "../CommentModal";
@@ -10,6 +10,7 @@ import { toggleFollow } from "@/api/community";
 import { useSession } from "@/providers/SessionProvider";
 import { ELOS_NAME, ELOS_IMAGE } from "@/constants/elo";
 import { showToast } from "@/utils/toast";
+import { ImagePreviewModal, ImagePreviewModalRef } from "../ImagePreviewModal";
 
 type PostProps = {
   id: string;
@@ -55,6 +56,7 @@ export function Post({
   const [isFollowing, setIsFollowing] = useState(users_clients.is_following);
   const [followersCount, setFollowersCount] = useState(users_clients.followers_count || 0);
   const visibleComments = comments.slice(-3);
+  const imagePreviewRef = useRef<ImagePreviewModalRef>(null);
 
   const isLiked = likes.some((like) => like.user_id === currentUserId);
   const createdAtDate = new Date(created_at);
@@ -125,11 +127,13 @@ export function Post({
       <Text className="text-gray-800 mb-4">{content}</Text>
 
       {image_url && (
-        <Image
-          source={{ uri: image_url }}
-          className="w-full h-48 rounded-lg mb-4"
-          resizeMode="cover"
-        />
+        <TouchableOpacity onPress={() => imagePreviewRef.current?.show(image_url)}>
+          <Image
+            source={{ uri: image_url }}
+            className="w-full h-48 rounded-lg mb-4"
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
       )}
 
       <View className="flex-row justify-between items-center mb-2">
@@ -191,6 +195,8 @@ export function Post({
         isCurrentUser={isCurrentUser}
         onToggleFollow={handleToggleFollow}
       />
+
+      <ImagePreviewModal ref={imagePreviewRef} />
     </View>
   );
 }
