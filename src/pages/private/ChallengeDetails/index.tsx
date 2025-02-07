@@ -32,6 +32,7 @@ import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import { goBack } from "@/routes/utils";
 import { ELOS_IMAGE } from "@/constants/elo";
+import { theme } from "@/theme";
 
 type ExerciseSet = { reps: string; weight: string };
 
@@ -1099,7 +1100,7 @@ export const ChallengeDetails = ({ route }: any) => {
   if (state.loading) {
     return (
       <SafeAreaView className="flex-1 bg-background py-2">
-        <ActivityIndicator size="large" color="#fff" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </SafeAreaView>
     );
   }
@@ -1187,7 +1188,7 @@ export const ChallengeDetails = ({ route }: any) => {
                 </TouchableOpacity>
               </>
             )}
-          {!state.challenge?.isParticipating ? (
+          {!state.challenge?.isParticipating && state.challenge?.status !== "completed" && !isChallengeEnded() ? (
             <TouchableOpacity
               className="bg-purple-600 rounded-lg p-4 items-center"
               onPress={handleJoinChallenge}

@@ -1,13 +1,21 @@
 import { useSession } from "@/providers/SessionProvider";
-import React from "react";
-import { View, Text, TouchableOpacity, Image } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  SafeAreaView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { UpdateProfilePhoto } from "@/components/UpdateProfilePhoto";
+import { EditProfile } from "@/components/EditProfile";
 
 export const Profile = () => {
-  const { signOut, user } = useSession();
-
+  const { signOut, user, getUser } = useSession();
+  const [showEditProfile, setShowEditProfile] = useState(false);
   return (
-    <View className="flex-1 bg-background px-4 py-8">
+    <SafeAreaView className="flex-1 bg-background px-4 py-8">
       <View className="flex-1">
         <View className="items-center">
           <Text className="text-white font-poppins-semibold text-2xl mb-8">
@@ -16,16 +24,24 @@ export const Profile = () => {
 
           {user && (
             <View className="items-center">
-              <Image
-                source={{
-                  uri:
-                    "https://ui-avatars.com/api/?name=" +
-                    user?.auth?.user_metadata?.name,
-                }}
-                className="w-32 h-32 rounded-full mb-4"
-              />
+              <View className="relative">
+                <Image
+                  source={{
+                    uri:
+                      user.game?.avatar_url ||
+                      "https://ui-avatars.com/api/?name=" +
+                        user?.auth?.user_metadata?.name,
+                  }}
+                  className="w-32 h-32 rounded-full mb-4"
+                />
+                <UpdateProfilePhoto
+                  onPhotoUpdated={() => {
+                    getUser();
+                  }}
+                />
+              </View>
               <Text className="text-white font-poppins-semibold text-xl mb-1">
-                {user?.auth?.user_metadata?.name}
+                {user?.game?.name}
               </Text>
               <Text className="text-gray-400 font-poppins-regular mb-8">
                 {user?.auth?.user_metadata?.email}
@@ -35,6 +51,7 @@ export const Profile = () => {
                 <TouchableOpacity
                   className="flex-row items-center justify-between"
                   activeOpacity={0.7}
+                  onPress={() => setShowEditProfile(true)}
                 >
                   <View className="flex-row items-center">
                     <Ionicons name="person-outline" size={24} color="#fff" />
@@ -79,6 +96,18 @@ export const Profile = () => {
           )}
         </View>
       </View>
-    </View>
+
+      <EditProfile
+        visible={showEditProfile}
+        onClose={() => setShowEditProfile(false)}
+        onSave={() => {
+          getUser();
+        }}
+        initialData={{
+          name: user?.auth?.user_metadata?.name || "",
+          email: user?.auth?.user_metadata?.email || "",
+        }}
+      />
+    </SafeAreaView>
   );
 };

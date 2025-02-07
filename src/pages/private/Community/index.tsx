@@ -16,6 +16,7 @@ import { showToast } from "@/utils/toast";
 import { getAvatarUrl } from "@/utils/avatar";
 import { useSession } from "@/providers/SessionProvider";
 import { TAB_BAR_HEIGHT } from "../Challenge";
+import { theme } from "@/theme";
 
 export const Community = () => {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -25,11 +26,11 @@ export const Community = () => {
   const { user: userSession } = useSession();
 
   const user = userSession?.auth;
-
+  
   const currentUser = {
     avatar: getAvatarUrl(
       user?.email || "",
-      user?.user_metadata?.avatar_url || ""
+      userSession?.game?.avatar_url || ""
     ),
     name: user?.user_metadata?.name || user?.email?.split("@")[0],
   };
@@ -137,7 +138,7 @@ export const Community = () => {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background justify-center items-center">
-        <ActivityIndicator size="large" color="#0284c7" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </SafeAreaView>
     );
   }
@@ -154,7 +155,8 @@ export const Community = () => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            colors={["#0284c7"]}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
           />
         }
       >
