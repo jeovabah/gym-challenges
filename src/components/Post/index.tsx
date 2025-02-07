@@ -65,10 +65,8 @@ export function Post({
   }, [users_clients.is_following, users_clients.followers_count]);
 
   const handleToggleFollow = async () => {
-    console.log('aqui')
     try {
       const result = await toggleFollow(user_id);
-      console.log(result);
       if (result !== null) {
         setIsFollowing(result);
         setFollowersCount(prev => result ? prev + 1 : prev - 1);
