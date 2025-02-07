@@ -155,11 +155,6 @@ export function SessionProvider(props: React.PropsWithChildren) {
   const register = async (props: RegisterProps) => {
     try {
       const data = await signUp(props.email, props.password, props.name);
-      if (data?.session?.access_token) {
-        const { session, ...userData } = data;
-        setSession(session.access_token);
-        setUser(JSON.stringify(userData));
-      }
 
       return data;
     } catch (error: any) {
