@@ -164,7 +164,6 @@ export const showChallenge = async (
   if (!data) {
     throw new Error("Desafio não encontrado");
   } 
-  console.log(data)
 
   return {
     ...data,
