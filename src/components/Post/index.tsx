@@ -1,6 +1,6 @@
 import { View, Text, Image, TouchableOpacity, TextInput } from "react-native";
 import { MaterialIcons, FontAwesome } from "@expo/vector-icons";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Comment } from "./types";
 import { CommentItem } from "../CommentItem";
 import { CommentModal } from "../CommentModal";
@@ -52,16 +52,23 @@ export function Post({
   const { user } = useSession();
   const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(users_clients.is_following);
   const [followersCount, setFollowersCount] = useState(users_clients.followers_count || 0);
   const visibleComments = comments.slice(-3);
 
   const isLiked = likes.some((like) => like.user_id === currentUserId);
   const createdAtDate = new Date(created_at);
 
+  useEffect(() => {
+    setIsFollowing(users_clients.is_following);
+    setFollowersCount(users_clients.followers_count || 0);
+  }, [users_clients.is_following, users_clients.followers_count]);
+
   const handleToggleFollow = async () => {
+    console.log('aqui')
     try {
       const result = await toggleFollow(user_id);
+      console.log(result);
       if (result !== null) {
         setIsFollowing(result);
         setFollowersCount(prev => result ? prev + 1 : prev - 1);
@@ -185,8 +192,6 @@ export function Post({
         user={users_clients}
         isCurrentUser={isCurrentUser}
         onToggleFollow={handleToggleFollow}
-        isFollowing={isFollowing}
-        followersCount={followersCount}
       />
     </View>
   );

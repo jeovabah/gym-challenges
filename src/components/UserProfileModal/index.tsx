@@ -1,5 +1,5 @@
 import { View, Text, Modal, TouchableOpacity, Image, Animated } from "react-native";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { getAvatarUrl } from "@/utils/avatar";
 import { ELOS_IMAGE, ELOS_NAME } from "@/constants/elo";
 
@@ -13,11 +13,11 @@ type UserProfileModalProps = {
     elo_id: string;
     points: number;
     following_count?: number;
+    followers_count: number;
+    is_following: boolean;
   };
   isCurrentUser: boolean;
   onToggleFollow: () => Promise<void>;
-  isFollowing: boolean;
-  followersCount: number;
 };
 
 export function UserProfileModal({
@@ -26,9 +26,21 @@ export function UserProfileModal({
   user,
   isCurrentUser,
   onToggleFollow,
-  isFollowing,
-  followersCount
 }: UserProfileModalProps) {
+  const [isFollowing, setIsFollowing] = useState(user.is_following);
+  const [followersCount, setFollowersCount] = useState(user.followers_count);
+
+  useEffect(() => {
+    setIsFollowing(user.is_following);
+    setFollowersCount(user.followers_count);
+  }, [user.is_following, user.followers_count]);
+
+  const handleToggleFollow = async () => {
+    await onToggleFollow();
+    setIsFollowing(!isFollowing);
+    setFollowersCount(prev => isFollowing ? prev - 1 : prev + 1);
+  };
+
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -104,7 +116,7 @@ export function UserProfileModal({
 
               {!isCurrentUser && (
                 <TouchableOpacity
-                  onPress={onToggleFollow}
+                  onPress={handleToggleFollow}
                   className={`mt-6 px-8 py-2 rounded-full ${
                     isFollowing ? 'bg-gray-200' : 'bg-blue-500'
                   }`}

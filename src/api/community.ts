@@ -1,5 +1,7 @@
 import { supabase } from "@/utils/supabase";
 import { ELOS_NAME, ELOS_IMAGE } from "@/constants/elo";
+import * as SecureStore from "expo-secure-store";
+import { showToast } from "@/utils/toast";
 
 // Tipos
 type Post = {
@@ -91,83 +93,129 @@ export async function createPost(post: Omit<Post, "id" | "created_at">) {
   return data;
 }
 
-export async function getPosts() {
-  const { data: posts, error } = await supabase
-    .from("posts")
-    .select(
-      `
-      *,
-      users_clients!inner (
-        id,
-        name,
-        avatar_url,
-        elo_id,
-        points
-      ),
-      comments (
-        id,
-        content,
-        created_at,
-        user_id,
-        users_clients (
-          name,
-          avatar_url
-        )
-      ),
-      likes (
-        user_id
-      )
-    `
-    )
-    .order("created_at", { ascending: false });
+// Função para verificar se um usuário está seguindo outro
+async function checkIsFollowing(followerId: string, followedId: string) {
+  try {
+    const { data, error } = await supabase
+      .from("followers")
+      .select("id")
+      .eq("user_id", followerId)
+      .eq("follows_user_id", followedId)
+      .maybeSingle();
 
-  if (error) {
-    console.error("Erro ao buscar posts:", error);
-    throw error;
+    if (error) {
+      console.error("Erro ao verificar following:", error);
+      return false;
+    }
+
+    return !!data;
+  } catch (error: any) {
+    console.error("Erro ao verificar following:", error);
+    return false;
   }
-
-  // Buscar contagens de followers e following para cada usuário
-  const postsWithCounts = await Promise.all(
-    posts.map(async (post) => {
-      const [followersCount, followingCount] = await Promise.all([
-        getFollowersCount(post.user_id),
-        getFollowingCount(post.user_id),
-      ]);
-
-      return {
-        ...post,
-        users_clients: {
-          ...post.users_clients,
-          followers_count: followersCount,
-          following_count: followingCount,
-          elo_name: ELOS_NAME[post.users_clients.elo_id],
-          elo_image: ELOS_IMAGE[post.users_clients.elo_id],
-        },
-      };
-    })
-  );
-
-  return postsWithCounts;
 }
 
-// Função auxiliar para contar followers
-async function getFollowersCount(userId: string) {
-  const { count } = await supabase
-    .from("followers")
-    .select("*", { count: "exact", head: true })
-    .eq("follows_user_id", userId);
+export async function getPosts() {
+  try {
+    const userData = await SecureStore.getItemAsync("user");
+    const user = JSON.parse(userData || "");
+    const userId = user?.auth?.id;
 
-  return count || 0;
+    const { data: posts, error } = await supabase
+      .from("posts")
+      .select(
+        `
+        *,
+        users_clients!inner (
+          id,
+          name,
+          avatar_url,
+          elo_id,
+          points
+        ),
+        comments (
+          id,
+          content,
+          created_at,
+          user_id,
+          users_clients (
+            name,
+            avatar_url
+          )
+        ),
+        likes (
+          user_id
+        )
+      `
+      )
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Erro ao buscar posts:", error);
+      throw error;
+    }
+
+    // Buscar contagens e status de following para cada usuário
+    const postsWithCounts = await Promise.all(
+      posts.map(async (post) => {
+        const [followersCount, followingCount, isFollowing] = await Promise.all([
+          getFollowersCount(post.user_id),
+          getFollowingCount(post.user_id),
+          userId ? checkIsFollowing(userId, post.user_id) : false
+        ]);
+
+        return {
+          ...post,
+          users_clients: {
+            ...post.users_clients,
+            followers_count: followersCount,
+            following_count: followingCount,
+            is_following: isFollowing,
+            elo_name: ELOS_NAME[post.users_clients.elo_id],
+            elo_image: ELOS_IMAGE[post.users_clients.elo_id],
+          },
+        };
+      })
+    );
+
+    return postsWithCounts;
+  } catch (error: any) {
+    console.error("Erro ao buscar posts:", error);
+    showToast("error", "Erro ao carregar posts");
+    return [];
+  }
 }
 
-// Função auxiliar para contar following
-async function getFollowingCount(userId: string) {
-  const { count } = await supabase
-    .from("followers")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
+// Função para contar followers
+export async function getFollowersCount(userId: string) {
+  try {
+    const { count, error } = await supabase
+      .from("followers")
+      .select("*", { count: "exact", head: true })
+      .eq("follows_user_id", userId);
 
-  return count || 0;
+    if (error) throw error;
+    return count || 0;
+  } catch (error: any) {
+    console.error("Erro ao contar followers:", error);
+    return 0;
+  }
+}
+
+// Função para contar following
+export async function getFollowingCount(userId: string) {
+  try {
+    const { count, error } = await supabase
+      .from("followers")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    if (error) throw error;
+    return count || 0;
+  } catch (error: any) {
+    console.error("Erro ao contar following:", error);
+    return 0;
+  }
 }
 
 // Comments
@@ -238,52 +286,53 @@ export async function toggleLike(like: { post_id: string; user_id: string }) {
   }
 }
 
-// Função para verificar se um usuário está seguindo outro
-export async function isFollowing(followerId: string, followedId: string) {
-  const { data } = await supabase
-    .from("followers")
-    .select("id")
-    .eq("user_id", followerId)
-    .eq("follows_user_id", followedId)
-    .single();
-
-  return !!data;
-}
-
 // Função para alternar follow/unfollow
 export async function toggleFollow(targetUserId: string) {
-  const { data: currentUser } = await supabase.auth.getUser();
-  const userId = currentUser.user?.id;
+  try {
+    const userData = await SecureStore.getItemAsync("user");
+    const user = JSON.parse(userData || "");
+    const userId = user?.auth?.id;
 
-  if (!userId || userId === targetUserId) return null;
+    if (!userId || userId === targetUserId) {
+      return null;
+    }
 
-  const following = await isFollowing(userId, targetUserId);
+    // Verifica se já está seguindo
+    const following = await checkIsFollowing(userId, targetUserId);
 
-  if (following) {
-    const { error } = await supabase
-      .from("followers")
-      .delete()
-      .eq("user_id", userId)
-      .eq("follows_user_id", targetUserId);
+    if (following) {
+      // Unfollow
+      const { error } = await supabase
+        .from("followers")
+        .delete()
+        .eq("user_id", userId)
+        .eq("follows_user_id", targetUserId);
 
-    if (error) throw error;
-    return false;
-  } else {
-    const { error } = await supabase.from("followers").insert({
-      user_id: userId,
-      follows_user_id: targetUserId,
-    });
+      if (error) throw error;
+      return false;
+    } else {
+      // Follow
+      const { error } = await supabase
+        .from("followers")
+        .insert({
+          user_id: userId,
+          follows_user_id: targetUserId,
+        });
 
-    if (error) throw error;
-    return true;
+      if (error) throw error;
+      return true;
+    }
+  } catch (error: any) {
+    console.error("Erro ao alternar follow:", error);
+    showToast("error", "Erro ao atualizar seguidor");
+    return null;
   }
 }
 
-// Função para buscar perfil do usuário com contagem de followers
 export async function getUserProfile(userId: string) {
-  const { data: currentUser } = await supabase.auth.getUser();
-  const currentUserId = currentUser.user?.id;
-
+  const userData = await SecureStore.getItemAsync("user");
+  const user = JSON.parse(userData || "");
+  const currentUserId = user?.auth.id;
   const { data, error } = await supabase
     .from("users_clients")
     .select(
@@ -298,7 +347,6 @@ export async function getUserProfile(userId: string) {
 
   if (error) throw error;
 
-  // Verificar se o usuário atual segue este perfil
   const { data: isFollowing } = await supabase
     .from("followers")
     .select("id")
