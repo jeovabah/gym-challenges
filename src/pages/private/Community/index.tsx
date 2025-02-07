@@ -1,11 +1,11 @@
 import { HeaderPage } from "@/components/HeaderPage";
 import { useState, useEffect, useCallback } from "react";
-import { 
-  SafeAreaView, 
-  ScrollView, 
-  View, 
-  ActivityIndicator, 
-  RefreshControl 
+import {
+  SafeAreaView,
+  ScrollView,
+  View,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Post as PostComponent } from "@/components/Post";
 import { Post, Comment } from "@/components/Post/types";
@@ -15,19 +15,23 @@ import * as communityApi from "@/api/community";
 import { showToast } from "@/utils/toast";
 import { getAvatarUrl } from "@/utils/avatar";
 import { useSession } from "@/providers/SessionProvider";
+import { TAB_BAR_HEIGHT } from "../Challenge";
 
 export const Community = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCreatePostVisible, setIsCreatePostVisible] = useState(false);
-  const { user: userSession} = useSession();
+  const { user: userSession } = useSession();
 
   const user = userSession?.auth;
 
   const currentUser = {
-    avatar: getAvatarUrl(user?.email || '', user?.user_metadata?.avatar_url || ""),
-    name: user?.user_metadata?.name || user?.email?.split('@')[0],
+    avatar: getAvatarUrl(
+      user?.email || "",
+      user?.user_metadata?.avatar_url || ""
+    ),
+    name: user?.user_metadata?.name || user?.email?.split("@")[0],
   };
 
   const loadPosts = async (showLoading = true) => {
@@ -36,7 +40,7 @@ export const Community = () => {
       const postsData = await communityApi.getPosts();
       setPosts(postsData);
     } catch (error) {
-      showToast('error', 'Erro ao carregar posts. Tente novamente mais tarde.');
+      showToast("error", "Erro ao carregar posts. Tente novamente mais tarde.");
     } finally {
       setIsLoading(false);
     }
@@ -57,14 +61,14 @@ export const Community = () => {
       await communityApi.createPost({
         user_id: user?.id as string,
         content,
-        image_url: mediaUrl
+        image_url: mediaUrl,
       });
 
       loadPosts();
       setIsCreatePostVisible(false);
-      showToast('success', 'Post criado com sucesso!');
+      showToast("success", "Post criado com sucesso!");
     } catch (error) {
-      showToast('error', 'Erro ao criar post. Tente novamente mais tarde.');
+      showToast("error", "Erro ao criar post. Tente novamente mais tarde.");
     }
   };
 
@@ -72,21 +76,25 @@ export const Community = () => {
     try {
       await communityApi.toggleLike({
         post_id: postId,
-        user_id: user?.id as string
+        user_id: user?.id as string,
       });
-// @ts-ignore
-      setPosts(posts.map(post => {
-        if (post.id === postId) {
-          const userLiked = post.likes.some(like => like.user_id === user?.id);
-          const likes = userLiked
-            ? post.likes.filter(like => like.user_id !== user?.id)
-            : [...post.likes, { user_id: user?.id }];
-          return { ...post, likes };
-        }
-        return post;
-      }));
+      setPosts(
+        // @ts-ignore
+        posts.map((post) => {
+          if (post.id === postId) {
+            const userLiked = post.likes.some(
+              (like) => like.user_id === user?.id
+            );
+            const likes = userLiked
+              ? post.likes.filter((like) => like.user_id !== user?.id)
+              : [...post.likes, { user_id: user?.id }];
+            return { ...post, likes };
+          }
+          return post;
+        })
+      );
     } catch (error) {
-      showToast('error', 'Erro ao processar like. Tente novamente mais tarde.');
+      showToast("error", "Erro ao processar like. Tente novamente mais tarde.");
     }
   };
 
@@ -95,26 +103,34 @@ export const Community = () => {
       const newComment = await communityApi.createComment({
         post_id: postId,
         user_id: user?.id as string,
-        content: commentText
+        content: commentText,
       });
 
-      setPosts(posts.map(post => {
-        if (post.id === postId) {
-          return {
-            ...post,
-            comments: [...post.comments, {
-              ...newComment,
-              users_clients: {
-                name: currentUser.name,
-                avatar_url: currentUser.avatar
-              }
-            }]
-          };
-        }
-        return post;
-      }));
+      setPosts(
+        posts.map((post) => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              comments: [
+                ...post.comments,
+                {
+                  ...newComment,
+                  users_clients: {
+                    name: currentUser.name,
+                    avatar_url: currentUser.avatar,
+                  },
+                },
+              ],
+            };
+          }
+          return post;
+        })
+      );
     } catch (error) {
-      showToast('error', 'Erro ao criar comentário. Tente novamente mais tarde.');
+      showToast(
+        "error",
+        "Erro ao criar comentário. Tente novamente mais tarde."
+      );
     }
   };
 
@@ -132,7 +148,7 @@ export const Community = () => {
         <HeaderPage title="Comunidade" />
       </View>
 
-      <ScrollView 
+      <ScrollView
         className="flex-1 px-4"
         refreshControl={
           <RefreshControl
@@ -147,7 +163,7 @@ export const Community = () => {
           onPress={() => setIsCreatePostVisible(true)}
         />
 
-        {posts.map(post => (
+        {posts.map((post) => (
           <PostComponent
             key={post.id}
             {...post}
@@ -156,6 +172,12 @@ export const Community = () => {
             onComment={handleComment}
           />
         ))}
+
+        <View
+          style={{
+            height: TAB_BAR_HEIGHT,
+          }}
+        />
       </ScrollView>
 
       <CreatePostModal
