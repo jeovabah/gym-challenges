@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "gymGreen",
+    "name": "GymGreen",
     "slug": "gymGreen",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -25,10 +25,14 @@
     ],
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.gymGreen"
+      "package": "com.gymGreen",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -37,6 +41,12 @@
       "eas": {
         "projectId": "6d7500d8-8d66-43a6-8e7d-47d0986f4732"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6d7500d8-8d66-43a6-8e7d-47d0986f4732"
     }
   }
 }
