@@ -12,6 +12,7 @@ type UserMetadata = {
   name: string;
   phone_verified: boolean;
   sub: string;
+  avatar_url: string | null;
 };
 
 type Identity = {

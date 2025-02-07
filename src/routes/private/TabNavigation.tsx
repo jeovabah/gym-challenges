@@ -6,6 +6,7 @@ import TabBar from "@/components/tab-bar/tab-bar";
 import { useTheme } from "styled-components/native";
 import { Profile } from "@/pages/private/Profile";
 import { Challenge } from "@/pages/private/Challenge";
+import { Community } from "@/pages/private/Community";
 
 const Tab = createBottomTabNavigator();
 
@@ -30,7 +31,7 @@ const TabNavigation = () => {
       tabBar={(props) => (
         <TabBar
           {...props}
-          numOfTabs={3}
+          numOfTabs={4}
           iconActiveColor="#fff"
           iconUnActiveColor="#E0E0E0"
           circleStyle={{
@@ -65,6 +66,21 @@ const TabNavigation = () => {
               Icon={MaterialIcons}
               size={24}
               iconName="emoji-events"
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Community"
+        component={Community}
+        options={{
+          title: "Comunidade",
+          tabBarIcon: ({ focused }) => (
+            <TabBarItem
+              focused={focused}
+              Icon={MaterialIcons}
+              size={24}
+              iconName="groups"
             />
           ),
         }}

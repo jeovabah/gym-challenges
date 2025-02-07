@@ -29,7 +29,7 @@ import { useSession } from "@/providers/SessionProvider";
 import { Mask } from "@/utils/mask";
 import * as ImagePicker from "expo-image-picker";
 
-const TAB_BAR_HEIGHT = 64;
+export const TAB_BAR_HEIGHT = 64;
 
 export const Challenge = () => {
   const [challenges, setChallenges] = useState<ChallengeType[]>([]);

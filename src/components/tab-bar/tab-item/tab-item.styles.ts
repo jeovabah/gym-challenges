@@ -10,8 +10,7 @@ const createStyle = ({ numOfItems }: { numOfItems: number }) => {
     },
     label: {
       color: 'white',
-      fontSize: 17,
-      fontWeight: 'bold',
+      fontSize: 14,
     },
   });
 };
