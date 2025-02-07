@@ -47,6 +47,8 @@ export const ChallengeCard = ({ updateFront, ...item }: ChallengeCardProps) => {
   const isActive = () => {
     const end = new Date(item?.end_date);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
     return end >= today;
   };
 
@@ -140,22 +142,16 @@ export const ChallengeCard = ({ updateFront, ...item }: ChallengeCardProps) => {
         >
           <View className="flex-1 pr-4">
             <View className="mb-2">
-              {item.status === "completed" ? (
+              {item.status === "completed" || !isActive() ? (
                 <View className="bg-red-500 self-start px-2 py-1 rounded-full mb-1">
                   <Text className="text-xs text-white font-poppins-regular">
                     Finalizado
                   </Text>
                 </View>
-              ) : isActive() ? (
+              ) : (
                 <View className="bg-green-500 self-start px-2 py-1 rounded-full mb-1">
                   <Text className="text-xs text-white font-poppins-regular">
                     {item.isParticipating ? "Participando" : "Ativo"}
-                  </Text>
-                </View>
-              ) : (
-                <View className="bg-red-500 self-start px-2 py-1 rounded-full mb-1">
-                  <Text className="text-xs text-white font-poppins-regular">
-                    Encerrado
                   </Text>
                 </View>
               )}

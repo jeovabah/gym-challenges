@@ -13,7 +13,7 @@ import {
   Image,
   Alert,
 } from "react-native";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   createChallenge,
   CreateChallengeInput,
@@ -36,6 +36,9 @@ export const Challenge = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [filterType, setFilterType] = useState<
+    "available" | "finished" | "all"
+  >("available");
   const { user } = useSession();
 
   const today = new Date();
@@ -54,6 +57,34 @@ export const Challenge = () => {
   const [imageUrl, setImageUrl] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [goal, setGoal] = useState("");
+
+  const filteredChallenges = useMemo(() => {
+    const today = new Date();
+    const diffDays = Math.ceil(
+      (today.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    switch (filterType) {
+      case "available":
+        return challenges.filter((challenge) => {
+          const end = new Date(challenge.end_date);
+          const diffDays = Math.ceil(
+            (end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          return diffDays >= 0 && challenge.status === "pending";
+        });
+      case "finished":
+        return challenges.filter((challenge) => {
+          const end = new Date(challenge.end_date);
+          const diffDays = Math.ceil(
+            (end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          return diffDays < 0 || challenge.status === "completed";
+        });
+      default:
+        return challenges;
+    }
+  }, [challenges, filterType]);
 
   const list = async () => {
     try {
@@ -250,15 +281,50 @@ export const Challenge = () => {
       </View>
       <View className="px-4 mb-4">
         <TouchableOpacity
-          className="bg-secondary rounded-lg p-3 items-center"
+          className="bg-secondary rounded-lg p-3 items-center mb-4"
           onPress={() => setShowCreateModal(true)}
         >
           <Text className="text-white font-poppins-regular">Criar desafio</Text>
         </TouchableOpacity>
+
+        {/* Filter buttons */}
+        <View className="flex-row justify-between mb-2">
+          <TouchableOpacity
+            className={`flex-1 p-2 rounded-lg mr-2 ${
+              filterType === "available" ? "bg-purple-600" : "bg-zinc-700"
+            }`}
+            onPress={() => setFilterType("available")}
+          >
+            <Text className="text-white text-center font-poppins-regular">
+              Disponíveis
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className={`flex-1 p-2 rounded-lg mr-2 ${
+              filterType === "finished" ? "bg-purple-600" : "bg-zinc-700"
+            }`}
+            onPress={() => setFilterType("finished")}
+          >
+            <Text className="text-white text-center font-poppins-regular">
+              Encerrados
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className={`flex-1 p-2 rounded-lg ${
+              filterType === "all" ? "bg-purple-600" : "bg-zinc-700"
+            }`}
+            onPress={() => setFilterType("all")}
+          >
+            <Text className="text-white text-center font-poppins-regular">
+              Todos
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
       <View className="px-4 flex-1">
         <FlatList
-          data={challenges}
+          data={filteredChallenges}
           renderItem={({ item }) => (
             <ChallengeCard
               key={item.id}
