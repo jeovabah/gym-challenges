@@ -155,8 +155,8 @@ export const ChallengeCard = ({ updateFront, ...item }: ChallengeCardProps) => {
                   </Text>
                 </View>
               )}
-              <View className="flex-row items-center">
-                <Text className="text-black font-poppins-bold text-lg">
+              <View className="flex-row items-center flex-1">
+                <Text className="text-black font-poppins-bold text-lg flex-1">
                   {item?.title}
                 </Text>
                 {isMyChallenge && (

@@ -11,6 +11,7 @@ import { useSession } from "@/providers/SessionProvider";
 import { ELOS_NAME, ELOS_IMAGE } from "@/constants/elo";
 import { showToast } from "@/utils/toast";
 import { ImagePreviewModal, ImagePreviewModalRef } from "../ImagePreviewModal";
+import { theme } from "@/theme";
 
 type PostProps = {
   id: string;
@@ -54,7 +55,9 @@ export function Post({
   const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
   const [isFollowing, setIsFollowing] = useState(users_clients.is_following);
-  const [followersCount, setFollowersCount] = useState(users_clients.followers_count || 0);
+  const [followersCount, setFollowersCount] = useState(
+    users_clients.followers_count || 0
+  );
   const visibleComments = comments.slice(-3);
   const imagePreviewRef = useRef<ImagePreviewModalRef>(null);
 
@@ -71,11 +74,14 @@ export function Post({
       const result = await toggleFollow(user_id);
       if (result !== null) {
         setIsFollowing(result);
-        setFollowersCount(prev => result ? prev + 1 : prev - 1);
-        showToast('success', result ? 'Seguindo usuário' : 'Deixou de seguir usuário');
+        setFollowersCount((prev) => (result ? prev + 1 : prev - 1));
+        showToast(
+          "success",
+          result ? "Seguindo usuário" : "Deixou de seguir usuário"
+        );
       }
     } catch (error) {
-      showToast('error', 'Erro ao atualizar seguidor');
+      showToast("error", "Erro ao atualizar seguidor");
     }
   };
 
@@ -84,12 +90,14 @@ export function Post({
   return (
     <View className="bg-white rounded-lg p-4 mb-4 shadow-sm">
       <View className="flex-row items-center mb-4">
-        <TouchableOpacity 
+        <TouchableOpacity
           className="flex-row items-center flex-1"
           onPress={() => setIsProfileModalVisible(true)}
         >
           <Image
-            source={{ uri: getAvatarUrl(users_clients.name, users_clients.avatar_url) }}
+            source={{
+              uri: getAvatarUrl(users_clients.name, users_clients.avatar_url),
+            }}
             className="w-10 h-10 rounded-full"
           />
           <View className="ml-3 flex-1">
@@ -114,11 +122,11 @@ export function Post({
           <TouchableOpacity
             onPress={handleToggleFollow}
             className={`px-4 py-1 rounded-full ${
-              isFollowing ? 'bg-gray-200' : 'bg-blue-500'
+              isFollowing ? "bg-gray-200" : "bg-blue-500"
             }`}
           >
-            <Text className={isFollowing ? 'text-gray-800' : 'text-white'}>
-              {isFollowing ? 'Seguindo' : 'Seguir'}
+            <Text className={isFollowing ? "text-gray-800" : "text-white"}>
+              {isFollowing ? "Seguindo" : "Seguir"}
             </Text>
           </TouchableOpacity>
         )}
@@ -127,7 +135,9 @@ export function Post({
       <Text className="text-gray-800 mb-4">{content}</Text>
 
       {image_url && (
-        <TouchableOpacity onPress={() => imagePreviewRef.current?.show(image_url)}>
+        <TouchableOpacity
+          onPress={() => imagePreviewRef.current?.show(image_url)}
+        >
           <Image
             source={{ uri: image_url }}
             className="w-full h-48 rounded-lg mb-4"
@@ -142,9 +152,9 @@ export function Post({
           className="flex-row items-center"
         >
           <MaterialIcons
-            name={isLiked ? "favorite" : "favorite-border"}
+            name={isLiked ? "fitness-center" : "fitness-center"}
             size={24}
-            color={isLiked ? "#FF0000" : "#666"}
+            color={isLiked ? theme.colors.primary : "#666"}
           />
           <Text className="ml-1">{likes.length}</Text>
         </TouchableOpacity>

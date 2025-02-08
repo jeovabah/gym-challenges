@@ -1104,7 +1104,6 @@ export const ChallengeDetails = ({ route }: any) => {
       </SafeAreaView>
     );
   }
-
   return (
     <SafeAreaView className="flex-1 bg-background py-2">
       {renderCameraModal()}
@@ -1127,7 +1126,7 @@ export const ChallengeDetails = ({ route }: any) => {
             {state.challenge?.image_url ? (
               <Image
                 source={{ uri: state.challenge.image_url }}
-                style={{ height: 200, borderRadius: 12 }}
+                style={{ height: 200, borderRadius: 12, width: "100%" }}
                 resizeMode="cover"
               />
             ) : (
@@ -1149,19 +1148,26 @@ export const ChallengeDetails = ({ route }: any) => {
           </TouchableOpacity>
           {state.showWorkoutInfo && (
             <View className="bg-zinc-800 px-4 pb-4 rounded-b-lg">
-              <Text className="text-gray-300 mb-1">
-                Métrica: {state.challenge?.metric?.name || "—"}
-              </Text>
-              <Text className="text-gray-300 mb-1">
-                Método de Registro:{" "}
-                {state.challenge?.registration_method?.name || "—"}
-              </Text>
-              <Text className="text-gray-300 mb-1">
-                Unidade: {state.challenge?.unit?.name || "—"}
-              </Text>
-              <Text className="text-gray-300 mb-1">
-                Meta: {state.challenge?.goal || "—"}
-              </Text>
+              {state.challenge?.metric?.name && (
+                <Text className="text-gray-300 mb-1">
+                  Métrica: {state.challenge.metric.name}
+                </Text>
+              )}
+              {state.challenge?.registration_method?.name && (
+                <Text className="text-gray-300 mb-1">
+                  Método de Registro: {state.challenge.registration_method.name}
+                </Text>
+              )}
+              {state.challenge?.unit?.name && (
+                <Text className="text-gray-300 mb-1">
+                  Unidade: {state.challenge.unit.name}
+                </Text>
+              )}
+              {state.challenge?.goal && (
+                <Text className="text-gray-300 mb-1">
+                  Meta: {state.challenge.goal}
+                </Text>
+              )}
             </View>
           )}
         </View>
@@ -1188,7 +1194,9 @@ export const ChallengeDetails = ({ route }: any) => {
                 </TouchableOpacity>
               </>
             )}
-          {!state.challenge?.isParticipating && state.challenge?.status !== "completed" && !isChallengeEnded() ? (
+          {!state.challenge?.isParticipating &&
+          state.challenge?.status !== "completed" &&
+          !isChallengeEnded() ? (
             <TouchableOpacity
               className="bg-purple-600 rounded-lg p-4 items-center"
               onPress={handleJoinChallenge}
@@ -1206,17 +1214,21 @@ export const ChallengeDetails = ({ route }: any) => {
                 <Text className="text-white text-center mr-2">Vencedor:</Text>
                 {state.challenge?.winner?.name ? (
                   <View className="flex-row items-center">
-                    <Text className="text-white text-center">{state.challenge.winner.name}</Text>
+                    <Text className="text-white text-center">
+                      {state.challenge.winner.name}
+                    </Text>
                     {state.challenge.winner?.elo?.id && (
-                      <Image 
+                      <Image
                         source={ELOS_IMAGE[state?.challenge?.winner?.elo?.id]}
-                        style={{width: 32, height: 32}}
+                        style={{ width: 32, height: 32 }}
                         className="ml-2"
                       />
                     )}
                   </View>
                 ) : (
-                  <Text className="text-white text-center">Nenhum vencedor definido</Text>
+                  <Text className="text-white text-center">
+                    Nenhum vencedor definido
+                  </Text>
                 )}
               </View>
             </View>
