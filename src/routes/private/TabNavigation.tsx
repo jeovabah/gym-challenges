@@ -7,6 +7,7 @@ import { useTheme } from "styled-components/native";
 import { Profile } from "@/pages/private/Profile";
 import { Challenge } from "@/pages/private/Challenge";
 import { Community } from "@/pages/private/Community";
+import { Leaderboard } from "@/pages/private/Leaderboard";
 
 const Tab = createBottomTabNavigator();
 
@@ -31,7 +32,7 @@ const TabNavigation = () => {
       tabBar={(props) => (
         <TabBar
           {...props}
-          numOfTabs={4}
+          numOfTabs={5}
           iconActiveColor="#fff"
           iconUnActiveColor="#E0E0E0"
           circleStyle={{
@@ -81,6 +82,21 @@ const TabNavigation = () => {
               Icon={MaterialIcons}
               size={24}
               iconName="groups"
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Leaderboard"
+        component={Leaderboard}
+        options={{
+          title: "Ranking",
+          tabBarIcon: ({ focused }) => (
+            <TabBarItem
+              focused={focused}
+              Icon={MaterialIcons}
+              size={24}
+              iconName="leaderboard"
             />
           ),
         }}
