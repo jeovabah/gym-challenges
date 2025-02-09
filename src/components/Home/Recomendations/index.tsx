@@ -7,6 +7,7 @@ import { getChallenges } from "@/api/challenges";
 import { useEffect, useState } from "react";
 import { useActiveTab } from "../TabComponent/event";
 import { navigate } from "@/routes/utils";
+import { setChallenges, useChallenges } from "./event";
 
 export type Trainer = {
   id: string;
@@ -26,7 +27,7 @@ export type Gym = {
 
 export const Recomendations = () => {
   const [trainners, setTrainners] = useState<Trainer[]>([]);
-  const [challenges, setChallenges] = useState<any[]>([]);
+  const challenges = useChallenges();
   const [gyms, setGyms] = useState<Gym[]>([]);
   const activeTab = useActiveTab();
 

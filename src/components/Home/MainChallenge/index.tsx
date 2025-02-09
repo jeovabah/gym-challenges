@@ -1,11 +1,14 @@
 import { View, Text, TouchableOpacity, Image } from "react-native";
+import { useChallenges } from "../Recomendations/event";
+import { navigate } from "@/routes/utils";
 
 export const MainChallenge = () => {
+  const challenges = useChallenges();
+
   const challenge = {
-    title: "Desafio Mensal",
+    title: "Premio Mensal",
     description: "Participe & Ganhe Brindes",
-    image:
-      "https://s3-alpha-sig.figma.com/img/f8e0/d0ea/0ac4b2faf403767d1539ea7a5d4e77d7?Expires=1738540800&Key-Pair-Id=APKAQ4GOSFWCVNEHN3O4&Signature=X1p1MHZ53gMXFdMSZfocRdXYISYkz9IxfmlfoHc7URpUd7Ewe9qYeQidCJeN3VpnCUlGj5e1640oZTr5~R1S7po03L-0ImOJFFlNLAlAbGMJk01uaRl000YdCt5UEGYXTCbZuRTZCQ8VxnyYgatnjmDPZ7~W0nXNGdPdgCmPE4MvTn~Hbm4f0PR9BXuqzWD0Z-j~wr12s5e3dhWxdmSasz8AhxefHJv3oZIZ18EUgcwBq90g1cd89OjqZjBe~QqIV4Xte0wzCzEocHSUbJKenUganOZVaVG5G6dwidhSKyL~UTXMThToEsExzUXaL5t8DVdU3cZd4k1JH0A~Ra3jTw__",
+    image: challenges[0]?.image_url,
   };
   return (
     <>
@@ -20,7 +23,10 @@ export const MainChallenge = () => {
           </View>
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity className="bg-secondary px-4 py-[30px]">
+        <TouchableOpacity
+          className="bg-secondary px-4 py-[30px]"
+          onPress={() => navigate("Challenge")}
+        >
           <View className="bg-background p-4 rounded-2xl">
             <View className="flex-row items-center justify-between">
               <View className="flex-col">
